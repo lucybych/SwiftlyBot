@@ -44,7 +44,7 @@ async def update_id_list(ctx: commands.Context, database: Database, type: str, i
         else:
             await ctx.send(f"Failed to reset the {sentence} (Is it already empty?).")
     else:
-        if item.id in configuration:
+        if configuration and item.id in configuration:
             configuration.remove(item.id)
             update = await database.update_config(ctx.guild.id, {"$set": {type: configuration}})
             if update.modified_count > 0:
@@ -90,7 +90,7 @@ async def update_list(ctx: commands.Context, database: Database, type: str, item
         else:
             await ctx.send(f"Failed to reset the {sentence} (Is it already empty?).")
     else:
-        if item in configuration:
+        if configuration and item in configuration:
             configuration.remove(item)
             update = await database.update_config(ctx.guild.id, {"$set": {type: configuration}})
             if update.modified_count > 0:
@@ -110,21 +110,29 @@ async def update_list(ctx: commands.Context, database: Database, type: str, item
 
 async def update_spam(ctx: commands.Context, database: Database, type: str, item1: str, item2: int, sentence1: str, sentence2: str):
     """Updates a spam configuration by either setting the time and amount or to disable the time and amount."""
-    time_string = await parse_time_string(item1)
-    if not time_string:
-        await ctx.send("Invalid time value. Please make sure it is of the format <num><type> (Ex. \"2d\" or \"4w\") (To disable, do 0s).")
-        return
-    str_1 = await expand_time_string(item1)
-    update = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_amount": item2}})
-    update2 = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_time": item1}})
-    if update.modified_count > 0 and update2.modified_count == 0:
-        await ctx.send(f"Updated {sentence2} to **{item2}**.")
-    elif update.modified_count == 0 and update2.modified_count > 0:
-        await ctx.send(f"Updated {sentence1} to {str_1}.")
-    elif update.modified_count > 0 and update2.modified_count > 0:
-        await ctx.send(f"Updated {sentence1} to {str_1} and {sentence2} to {item2}.")
+    if not item1 and not item2:
+        update = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_amount": 0}})
+        update2 = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_time": "0s"}})
+        if update.modified_count > 0 and update2.modified_count > 0:
+            await ctx.send(f"Disabled this spam type.")
+        else:
+            await ctx.send(f"Failed to disable the spam type (Is it already disabled?)")
     else:
-        await ctx.send(f"Failed to update {sentence1} and {sentence2} (Are they already set to these values?)")
+        time_string = await parse_time_string(item1)
+        if not time_string:
+            await ctx.send("Invalid time value. Please make sure it is of the format <num><type> (Ex. \"2d\" or \"4w\") (To disable, do 0s).")
+            return
+        str_1 = await expand_time_string(item1)
+        update = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_amount": item2}})
+        update2 = await database.update_config(ctx.guild.id, {"$set": {f"{type}spam_time": item1}})
+        if update.modified_count > 0 and update2.modified_count == 0:
+            await ctx.send(f"Updated {sentence2} to **{item2}**.")
+        elif update.modified_count == 0 and update2.modified_count > 0:
+            await ctx.send(f"Updated {sentence1} to {str_1}.")
+        elif update.modified_count > 0 and update2.modified_count > 0:
+            await ctx.send(f"Updated {sentence1} to {str_1} and {sentence2} to {item2}.")
+        else:
+            await ctx.send(f"Failed to update {sentence1} and {sentence2} (Are they already set to these values?)")
     
 async def update_str(ctx: commands.Context, database: Database, type: str, item: str, sentence: str):
     """Updates a string in the database by either setting it to an empty string or to the provided item"""

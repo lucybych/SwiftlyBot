@@ -1,0 +1,14 @@
+self.bot: The Discord bot that is connected
+self.database: The Database and its respective functions
+member: A Discord member (Someone who is in a guild/server). Plural if multiple are involved
+message: A Discord message. Plural if multiple are involved
+embed: A Discord embed
+current_time: The current time (From discord.utc.utilsnow)
+min_account_age: Represents the entry found in the database for "min_account_age"
+bad_link: Represents a banned link found in the database for "bad_links". Plural if multiple are involved
+message_log: Represents the message logging channel for a guild/server
+valid: Represents whether an ID is valid for use or not (Meaning an ID is inside a white or blacklist)
+channel_type: Represents the type of a Discord channel
+role_perm: Represents a permission for a role. Plural if multiple are involved
+ordinal_num: Represents a number that is created as an ordinal (Ex. 1st, 4th, 27th, etc.)
+text: Represents a string, since a message involves text among other things

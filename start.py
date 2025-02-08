@@ -1,8 +1,8 @@
-import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-import os
 from utility.guild import Database
+import discord
+import os
 
 load_dotenv("variables.env")
 TOKEN = os.environ.get('DISCORD_TOKEN')
@@ -17,12 +17,23 @@ async def on_ready():
     database = Database(bot)
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('Loading extensions...')
+    #await bot.load_extension("cogs.automod")
     await bot.load_extension("cogs.config")
+    #await bot.load_extension("cogs.emd")
+    #await bot.load_extension("cogs.giveaway")
+    #await bot.load_extension("cogs.level")
+    #await bot.load_extension("cogs.logs")
     await bot.load_extension("cogs.moderation")
-    await bot.load_extension("cogs.welcome")
+    #await bot.load_extension("cogs.reminder")
+    #await bot.load_extension("cogs.roles")
+    #await bot.load_extension("cogs.starboard")
+    #await bot.load_extension("cogs.tmc")
+    #await bot.load_extension("cogs.tnb")
+    #await bot.load_extension("cogs.utility")
+    #await bot.load_extension("cogs.voicelink")
+    #await bot.load_extension("cogs.welcome")
     print('Extensions loaded.')
     print('------')
-    print(bot.cogs)
     for guild in bot.guilds:
         await database.setup_default_config(guild.id)
 

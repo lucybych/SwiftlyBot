@@ -1,10 +1,10 @@
-import asyncio
-import discord
 from discord.ext import commands
-import random
-import re
 from typing import List
 from utility.finder import has_roles
+import asyncio
+import discord
+import random
+import re
 
 blacklist_roles = [385963065469829120,845424391810580480,385965306696433668,385965575773618190,385985214796791808,385985247613026305,584478303818219536,619264009903800359,591349014889234531,619273032053162015,607328447689261098]
 blacklist_roles_2 = [385963065469829120,845424391810580480,385965306696433668,385965575773618190]
@@ -13,8 +13,9 @@ emd_server_id = 385956732888678402
 level_roles = [385976059406843904, 385975834701463552, 385975936585039883, 385975983632809986, 403294886155255823, 559533095368523797, 559533163215585290, 559533193661906956]
 mod_chat_id = 385966411165728800
 mod_log_id = 385973126623789076
-mute_role = 385978553935593472
+mute_role_id = 385978553935593472
 self_intros_id = 385974149018812416
+self_intros_id = 1336837177484771339
 shame_images = ["https://i.imgur.com/Yca8mcX.png","https://i.imgur.com/SWPLesj.png"]
 sl_images = ["https://i.imgur.com/vPOPWTo.png", "https://i.imgur.com/XYxjdWR.png", "https://i.imgur.com/k7wz69v.png", "https://i.imgur.com/OhWEiQF.png", "https://i.imgur.com/pOV7mRh.png", "https://i.imgur.com/dZKhFsE.png", "https://i.imgur.com/gl7Rbh6.png", "https://i.imgur.com/dHSGuBl.png", "https://i.imgur.com/lGnVMuv.png", "https://i.imgur.com/FuYokju.png", "https://i.imgur.com/6rbamK5.png", "https://i.imgur.com/N4b0SVB.png", "https://i.imgur.com/45R2ISm.png", "https://i.imgur.com/iZhOBJq.png", "https://i.imgur.com/KgHu3bm.png", "https://i.imgur.com/vSmFbYz.png", "https://i.imgur.com/Ukhb3xZ.png", "https://i.imgur.com/TyQozmx.png", "https://i.imgur.com/1vqPe7Y.png", "https://i.imgur.com/cUVxxW9.png", "https://i.imgur.com/8q3Ifd5.png"]
 staff_roles = [385965575773618190,385965306696433668,385979606194454538]
@@ -24,10 +25,10 @@ class EMD(commands.Cog):
         """Initializes the EMD module"""
         self.bot = bot
     
-    async def has_link(self, message_content: str) -> bool:
+    async def has_link(self, content: str) -> bool:
         """Checks if a user's message in EMD contains a link, which would trigger the link prevention automod"""
         url_pattern = re.compile(r'https?://(?:www\.)?\S+|www\.\S+')
-        return bool(url_pattern.search(message_content))
+        return bool(url_pattern.search(content))
 
     async def is_valid_nickname(self, nickname: str) -> bool:
         """Checks if a user's name/nickname in EMD has 3 valid alphanumeric characters"""
@@ -35,7 +36,7 @@ class EMD(commands.Cog):
             return False
         return bool(re.search(r'[a-zA-Z0-9]{3}', nickname))
 
-    async def staff_check(self, ctx: commands.Context):
+    async def staff_check(self, ctx: commands.Context) -> bool:
         """Check if the user has staff roles."""
         if ctx.guild.id != emd_server_id:
             return False
@@ -49,7 +50,7 @@ class EMD(commands.Cog):
         """For EMD staff to get pinged in staff chat"""
         if ctx.guild.id == emd_server_id:
             if not await has_roles(ctx.author, staff_roles):
-                raise commands.MissingPermissions
+                raise commands.MissingPermissions(["No staff roles"])
             channel = ctx.guild.get_channel(mod_chat_id)
             if channel:
                 await channel.send(f"Here is your ping anchor, {ctx.author.mention}! ⚓")
@@ -71,14 +72,13 @@ class EMD(commands.Cog):
             await ctx.send("mod_chat channel cannot be found. Contact swiftlynerd so that she can ensure the channel ID is accurate.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
 
     @commands.command()
     async def anchovy(self, ctx: commands.Context):
         """For EMD staff to get pinged in staff chat, but fishier 🐟"""
         if ctx.guild.id == emd_server_id:
             if not await has_roles(ctx.author, staff_roles):
-                raise commands.MissingPermissions
+                raise commands.MissingPermissions(["No staff roles"])
             channel = ctx.guild.get_channel(mod_chat_id)
             if channel:
                 await channel.send(f"Here is your ping anchovy, {ctx.author.mention}! 🐟")
@@ -98,7 +98,6 @@ class EMD(commands.Cog):
             await ctx.send("mod_chat channel cannot be found. Contact swiftlynerd so that she can ensure the channel ID is accurate.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
 
     @commands.command()
     async def betterdiscord(self, ctx: commands.Context):
@@ -129,7 +128,6 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command(aliases=['dead'])
     async def deadchat(self, ctx: commands.Context):
         """For EMD staff to use when someone mentions if/when a chat is inactive"""
@@ -153,7 +151,6 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command()
     async def eee(self, ctx: commands.Context):
         """Posts an invite to the spinoff server Eevee's Emote Encyclopedia"""
@@ -175,7 +172,6 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command()
     async def emd(self, ctx: commands.Context):
         """Posts EMD's permanent server invite"""
@@ -192,7 +188,6 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command()
     async def emotes(self, ctx: commands.Context):
         """For EMD staff to use when someone asks about emotes"""
@@ -213,7 +208,6 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command(aliases=['rescue'])
     async def ert(self, ctx: commands.Context):
         """Posts an invite to the spinoff server Eevee's Rescue Team"""
@@ -231,36 +225,35 @@ class EMD(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-
     @commands.command()
     async def introcl(self, ctx: commands.Context):
         """Goes through EMD's self-introductions channel and removes all intros from those who posted multiple or who have left the server"""
         if ctx.guild.id != emd_server_id:
             return
         if not await has_roles(ctx.author, staff_roles):
-            raise commands.MissingPermissions
+            raise commands.MissingPermissions(["No staff roles"])
         intro_channel = ctx.guild.get_channel(self_intros_id)
         if intro_channel:
-            user_latest_message = {}
-            messages_to_delete: List[discord.Message] = []
+            latest_messages = {}
+            messages: List[discord.Message] = []
             async for message in intro_channel.history(limit=None):
                 if message.author not in ctx.guild.members:
-                    messages_to_delete.append(message)
+                    messages.append(message)
                 else:
-                    if message.author in user_latest_message:
-                        messages_to_delete.append(message)
+                    if message.author in latest_messages:
+                        messages.append(message)
                     else:
-                        user_latest_message[message.author] = message
-            deleted_messages = 0
-            if messages_to_delete:
-                for message in messages_to_delete[1:]:
+                        latest_messages[message.author] = message
+            num_deleted = 0
+            if messages:
+                for message in messages[1:]:
                     try:
                         await message.delete()
-                        deleted_messages += 1
+                        num_deleted += 1
                     except Exception:
                         pass
-                if deleted_messages > 0:
-                    await ctx.send(f"🧹 Cleaned up {deleted_messages} messages!", delete_after=5)
+                if num_deleted > 0:
+                    await ctx.send(f"🧹 Cleaned up {num_deleted} messages!", delete_after=5)
                 else:
                     await ctx.send(f"No messages to delete!",delete_after=5)
                     await ctx.message.delete()
@@ -521,17 +514,17 @@ class EMD(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command(aliases=['silenceliberal'])
-    async def sl(self, ctx: commands.Context, user: discord.Member):
+    async def sl(self, ctx: commands.Context, member: discord.Member):
         """For EMD staff to use to temporarily mute users, for fun!"""
         if ctx.guild.id == emd_server_id:
             if not await has_roles(ctx.author, staff_roles):
-                raise commands.MissingPermissions
-            mute_role_thing = ctx.guild.get_role(mute_role)
-            if mute_role_thing:
-                await user.add_roles(mute_role_thing)
+                raise commands.MissingPermissions(["No staff roles"])
+            mute_role = ctx.guild.get_role(mute_role_id)
+            if mute_role:
+                await member.add_roles(mute_role)
                 await ctx.send("*(Muted for 36 seconds.)*\n" + random.choice(sl_images))
                 await asyncio.sleep(36)
-                await user.remove_roles(mute_role_thing)
+                await member.remove_roles(mute_role)
             else:
                 raise commands.RoleNotFound
     @sl.error

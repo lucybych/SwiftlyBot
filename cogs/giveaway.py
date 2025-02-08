@@ -1,11 +1,21 @@
-import asyncio
 from datetime import datetime, timedelta, timezone
-import discord
 from discord.ext import commands, tasks
-import random
 from typing import Union
 from utility.finder import has_valid_id
 from utility.guild import Database, parse_time_string
+import asyncio
+import discord
+import random
+
+CHANNEL_ID = "channel_id"
+ENDED = "ended"
+END_TIME = "end_time"
+HOST_ID = "host_id"
+MESSAGE_ID = "message_id"
+PARTICIPANTS = "participants"
+PRIZE = "prize"
+WINNERS_LIST = "winners_list"
+WINNERS_NUM = "winners_num"
 
 class Giveaway(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -16,104 +26,99 @@ class Giveaway(commands.Cog):
 
     async def reset_giveaways(self):
         """Purges expired giveaways from the database (Meaning giveaways that ended over 2 weeks ago)"""
-        now_utc = discord.utils.utcnow()
-        two_weeks_ago = now_utc - timedelta(weeks=2)
+        two_weeks_ago = discord.utils.utcnow() - timedelta(weeks=2)
         server_ids = self.database.mongo_client.list_database_names()
         for server_id in server_ids:
-            config_collection = await self.database.get_guild_collection(server_id, "giveaway")
-            async for giveaway in config_collection.find():
-                ended = giveaway.get("ended", False)
-                end_time = giveaway.get("end_time")
+            giveaway_collection = await self.database.get_guild_collection(server_id, self.database.giveaway)
+            async for giveaway in giveaway_collection.find():
+                ended = giveaway.get(ENDED, False)
+                end_time = giveaway.get(END_TIME)
                 if ended and end_time:
                     if isinstance(end_time, str):
                         end_time = datetime.fromisoformat(end_time)
                     if end_time < two_weeks_ago:
-                        await config_collection.delete_one({"_id": giveaway["_id"]})
+                        await giveaway_collection.delete_one({"_id": giveaway["_id"]})
     
     async def schedule_giveaway_end(self, message_id: int, guild_id: int, duration_seconds: float):
         """Waits for a giveaway to end and announces the winners, if possible"""
-        giveaway_collection = await self.database.get_guild_collection(guild_id, "giveaway")
+        giveaway_collection = await self.database.get_guild_collection(guild_id, self.database.giveaway)
         await asyncio.sleep(duration_seconds)
-        giveaway = await giveaway_collection.find_one({"message_id": message_id})
-        if giveaway and not giveaway["ended"]:
-            channel = self.bot.get_channel(giveaway["channel_id"])
+        giveaway = await giveaway_collection.find_one({MESSAGE_ID: message_id})
+        if giveaway and not giveaway[ENDED]:
+            channel = self.bot.get_channel(giveaway[CHANNEL_ID])
             if channel:
-                giveaway_message = await channel.fetch_message(message_id)
-                if giveaway_message:
-                    users = giveaway_message.reactions[0].users()
+                message = await channel.fetch_message(message_id)
+                if message:
+                    users = message.reactions[0].users()
                     users = [user async for user in users if not user.bot]
-                    host = self.bot.get_user(giveaway["host_id"])
-                    winners_count = giveaway["winners_num"]
-                    if len(users) < winners_count:
-                        winners = users
-                    else:
-                        winners = random.sample(users, winners_count)
-                    users_list = [user.id for user in users]
-                    winners_list = [winner.id for winner in winners]
-                    await giveaway_collection.update_one({"message_id": message_id}, {"$set": {"ended": True, "participants": users_list, "winners_num": len(winners), "winners_list": winners_list}})
+                    host = self.bot.get_user(giveaway[HOST_ID])
+                    winners_num = giveaway[WINNERS_NUM]
+                    winners = users if len(users) < winners_num else random.sample(users, winners_num)
+                    user_ids = [user.id for user in users]
+                    winner_ids = [winner.id for winner in winners]
+                    await giveaway_collection.update_one({MESSAGE_ID: message_id}, {"$set": {ENDED: True, PARTICIPANTS: user_ids, WINNERS_NUM: len(winners), WINNERS_LIST: winner_ids}})
                     if winners:
                         winner_mentions = ", ".join([user.mention for user in winners])
-                        await channel.send(f"Congratulations {winner_mentions}! You won the **{giveaway['prize']}**!")
+                        await channel.send(f"Congratulations {winner_mentions}! You won the **{giveaway[PRIZE]}**!")
                     else:
                         winner_mentions = "None"
-                        await channel.send(f"No valid winners could be selected for **{giveaway['prize']}**.")
-                    new_embed = discord.Embed(color=discord.Color.dark_gray(),title=giveaway["prize"],timestamp=discord.utils.utcnow())
-                    new_embed.add_field(name="Ended: ",value=f"{discord.utils.format_dt(discord.utils.utcnow(), 'R')}")
-                    new_embed.add_field(name="Hosted by: ",value=host.mention if host else "Unknown Host")
-                    new_embed.add_field(name="Entries: ",value=f"**{len(users)}**")
-                    new_embed.add_field(name="Winners: ",value=winner_mentions)
-                    await giveaway_message.edit(embed=new_embed)
+                        await channel.send(f"No valid winners could be selected for **{giveaway[PRIZE]}**.")
+                    current_time = discord.utils.utcnow()
+                    embed = discord.Embed(color=discord.Color.dark_gray(),title=giveaway[PRIZE],timestamp=current_time)
+                    embed.add_field(name="Ended: ",value=f"{discord.utils.format_dt(current_time, 'R')}")
+                    embed.add_field(name="Hosted by: ",value=host.mention if host else "Unknown Host")
+                    embed.add_field(name="Entries: ",value=f"**{len(users)}**")
+                    embed.add_field(name="Winners: ",value=winner_mentions)
+                    await message.edit(embed=embed)
 
     @tasks.loop(hours=24)
     async def update_giveaways(self):
         """Loop that attempts to purge giveaways every day at 12 AM UTC"""
-        now_utc = discord.utils.utcnow()
-        if now_utc.hour == 0 and now_utc.minute == 0:
+        current_time = discord.utils.utcnow()
+        if current_time.hour == 0 and current_time.minute == 0:
             await self.reset_giveaways()
 
     @update_giveaways.before_loop
     async def before_update_giveaways(self):
         """Waits until 12 AM UTC before updating giveaways"""
-        now = discord.utils.utcnow()
-        target_time = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        wait_time = (target_time - now).total_seconds()
+        target_time = (discord.utils.utcnow() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         await discord.utils.sleep_until(target_time)
 
     @commands.command()
-    async def greroll(self, ctx: commands.Context, id: int):
+    async def greroll(self, ctx: commands.Context, message_id: int):
         """Rerolls a giveaway, if said giveaway exists and has ended"""
-        if not await has_valid_id(ctx.author, ctx.channel, ctx.guild, self.database, "giveaway_hosts"):
-            raise commands.MissingPermissions
-        giveaway = await self.database.get_guild_collection(ctx.guild.id, "giveaway")
-        document = await giveaway.find_one({"message_id": id})
-        if document and document["ended"]:
-            channel = ctx.guild.get_channel(document["channel_id"])
-            if channel and ctx.author.id == document["host_id"] or ctx.author.guild_permissions.manage_guild:
-                giveaway_message = await channel.fetch_message(id)
-                winners_list_db = document["winners_list"]
-                reactions = [reaction for reaction in giveaway_message.reactions if reaction.emoji == "🎉"]
+        if not await has_valid_id(ctx.author, ctx.channel, ctx.guild, self.database, self.database.giveaway_hosts):
+            raise commands.MissingPermissions(["Non-host/staff"])
+        giveaway_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.giveaway)
+        giveaway = await giveaway_collection.find_one({MESSAGE_ID: message_id})
+        if giveaway and giveaway[ENDED]:
+            channel = ctx.guild.get_channel(giveaway[CHANNEL_ID])
+            if channel and ctx.author.id == giveaway[HOST_ID] or ctx.author.guild_permissions.manage_guild:
+                message = await channel.fetch_message(message_id)
+                winners_list = giveaway[WINNERS_LIST]
+                reactions = [reaction for reaction in message.reactions if reaction.emoji == "🎉"]
                 users = reactions[0].users()
-                users = [user async for user in users if not user.bot and user.id not in winners_list_db]
-                winners_count = document["winners_num"]
-                host = self.bot.get_user(document["host_id"])
-                winners = users if len(users) < winners_count else random.sample(users, winners_count)
-                users_list = [user.id for user in users]
-                winners_list = [winner.id for winner in winners]
-                await giveaway.update_one({"message_id": id}, {"$set": {"ended": True, "participants": users_list, "winners_num": len(winners), "winners_list": winners_list}})
+                users = [user async for user in users if not user.bot and user.id not in winners_list]
+                winners_num = giveaway[WINNERS_NUM]
+                host = self.bot.get_user(giveaway[HOST_ID])
+                winners = users if len(users) < winners_num else random.sample(users, winners_num)
+                user_ids = [user.id for user in users]
+                winner_ids = [winner.id for winner in winners]
+                await giveaway_collection.update_one({MESSAGE_ID: message_id}, {"$set": {ENDED: True, PARTICIPANTS: user_ids, WINNERS_NUM: len(winners), WINNERS_LIST: winner_ids}})
                 if winners:
                     winner_mentions = ", ".join([user.mention for user in winners])
-                    await channel.send(f"Congratulations {winner_mentions}! You won the **{document['prize']}**!")
+                    await channel.send(f"Congratulations {winner_mentions}! You won the **{giveaway[PRIZE]}**!")
                 else:
                     winner_mentions = "None"
-                    await channel.send(f"No winners could be rerolled for **{document['prize']}**.")
-                new_embed = discord.Embed(color=discord.Color.dark_gray(),title=document['prize'],timestamp=discord.utils.utcnow())
+                    await channel.send(f"No winners could be rerolled for **{giveaway[PRIZE]}**.")
+                new_embed = discord.Embed(color=discord.Color.dark_gray(),title=giveaway[PRIZE],timestamp=discord.utils.utcnow())
                 new_embed.add_field(name="Ended: ",value=f"{discord.utils.format_dt(discord.utils.utcnow(), 'R')}")
                 new_embed.add_field(name="Hosted by: ",value=host.mention if host else "Unknown Host")
                 new_embed.add_field(name="Entries: ",value=f"**{len(users)}**")
                 new_embed.add_field(name="Winners: ",value=winner_mentions)
-                await giveaway_message.edit(embed=new_embed)
+                await message.edit(embed=new_embed)
             else:
-                raise commands.MissingPermissions
+                raise commands.MissingPermissions(["Non-host/staff"])
         else:
             raise commands.CommandInvokeError
     @greroll.error
@@ -134,48 +139,46 @@ class Giveaway(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command()
-    async def gstart(self, ctx: commands.Context, time: Union[str, float], winners: int, *, prize: str):
+    async def gstart(self, ctx: commands.Context, time: Union[str, float], num_winners: int, *, prize: str):
         """Starts a giveaway that will end in the given time, have the given number of winners, and is for the given prize"""
-        if not await has_valid_id(ctx.author, ctx.channel, ctx.guild, self.database, "giveaway_hosts"):
-            raise commands.MissingPermissions
-        if winners <= 0:
+        if not await has_valid_id(ctx.author, ctx.channel, ctx.guild, self.database, self.database.giveaway_hosts):
+            raise commands.MissingPermissions(["Non-host/staff"])
+        if num_winners <= 0:
             raise commands.UserInputError
         guild_id = ctx.guild.id
-        giveaway_collection = await self.database.get_guild_collection(guild_id, "giveaway")
-        if isinstance(time, str):
-            duration = await parse_time_string(time)
-            if not duration:
-                raise commands.UserInputError
-        else:
-            duration = datetime.fromtimestamp(time,timezone.utc)
-        end_time = discord.utils.utcnow() + duration
-        embed = discord.Embed(title=prize, color=discord.Color.dark_gray(),timestamp=discord.utils.utcnow())
+        giveaway_collection = await self.database.get_guild_collection(guild_id, self.database.giveaway)
+        duration = await parse_time_string(time) if isinstance(time, str) else datetime.fromtimestamp(time, timezone.utc)
+        if not duration:
+            raise commands.UserInputError
+        current_time = discord.utils.utcnow()
+        end_time = current_time + duration
+        embed = discord.Embed(title=prize, color=discord.Color.dark_gray(),timestamp=current_time)
         embed.add_field(name="Ends in: ", value=f"{discord.utils.format_dt(end_time, 'R')}")
         embed.add_field(name="Hosted by: ", value=ctx.author.mention)
         embed.add_field(name="Entires: ", value="**0**")
-        embed.add_field(name="Winners: ",value=winners)
-        giveaway_message = await ctx.send(embed=embed)
+        embed.add_field(name="Winners: ",value=num_winners)
+        message = await ctx.send(embed=embed)
         try:
-            await giveaway_message.add_reaction("🎉")
+            await message.add_reaction("🎉")
         except Exception as e:
             try:
-                giveaway_message.delete()
+                message.delete()
             except Exception:
                 pass
             raise e
         giveaway_doc = {
-            "message_id": giveaway_message.id,
-            "channel_id": ctx.channel.id,
-            "end_time": end_time,
-            "prize": prize,
-            "host_id": ctx.author.id,
-            "winners_num": winners,
-            "winners_list": [],
-            "participants": [], 
-            "ended": False
+            MESSAGE_ID: message.id,
+            CHANNEL_ID: ctx.channel.id,
+            END_TIME: end_time,
+            PRIZE: prize,
+            HOST_ID: ctx.author.id,
+            WINNERS_NUM: num_winners,
+            WINNERS_LIST: [],
+            PARTICIPANTS: [], 
+            ENDED: False
         }
         giveaway_collection.insert_one(giveaway_doc)
-        self.bot.loop.create_task(self.schedule_giveaway_end(giveaway_message.id, ctx.guild.id, duration.total_seconds()))
+        self.bot.loop.create_task(self.schedule_giveaway_end(message.id, ctx.guild.id, duration.total_seconds()))
     @gstart.error
     async def on_gstart_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -196,23 +199,24 @@ class Giveaway(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         """Adds a user to the giveaway entries list, if the message is a valid giveaway and the user is not blacklisted"""
+        guild = self.bot.get_guild(payload.guild_id)
+        user = payload.member
+        if not user or user.bot:
+            return
         if payload.emoji.name == "🎉":
             channel = self.bot.get_channel(payload.channel_id)
-            guild = self.bot.get_guild(payload.guild_id)
-            user = self.bot.get_user(payload.user_id)
             message = await channel.fetch_message(payload.message_id)
-            allowed = await has_valid_id(user, channel, guild, self.database, "giveaway_blacklist")
-            if not allowed:
+            blacklisted = await has_valid_id(user, channel, guild, self.database, self.database.giveaway_blacklist)
+            if blacklisted:
                 await message.remove_reaction("🎉", user)
                 await user.send(f"You cannot enter this giveaway in {guild.name} due to being blacklisted from entering giveaways.")
                 return
-            collection_name = "giveaway"
-            giveaway_collection = await self.database.get_guild_collection(payload.guild_id, collection_name)
-            giveaway = await giveaway_collection.find_one({"message_id": payload.message_id})
-            if giveaway and not giveaway["ended"]:
+            giveaway_collection = await self.database.get_guild_collection(payload.guild_id, self.database.giveaway)
+            giveaway = await giveaway_collection.find_one({MESSAGE_ID: payload.message_id})
+            if giveaway and not giveaway[ENDED]:
                 if user and not user.bot:
-                    await giveaway_collection.update_one({"message_id": payload.message_id},{"$addToSet": {"participants": payload.user_id}})
-                    participants = giveaway.get("participants", [])
+                    await giveaway_collection.update_one({MESSAGE_ID: payload.message_id},{"$addToSet": {PARTICIPANTS: payload.user_id}})
+                    participants = giveaway.get(PARTICIPANTS, [])
                     embed = message.embeds[0]
                     embed.set_field_at(2, name="Entries:",value=f"**{str(len(participants) + 1)}**")
                     await message.edit(embed=embed)
@@ -220,22 +224,22 @@ class Giveaway(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         """Removes the user from the giveaway entries list, if the message is a valid giveaway"""
+        user = self.bot.get_user(payload.user_id)
+        if not user or user.bot:
+            return
         if payload.emoji.name == "🎉":
-            collection_name = "giveaway"
-            giveaway_collection = await self.database.get_guild_collection(payload.guild_id, collection_name)
-            giveaway = await giveaway_collection.find_one({"message_id": payload.message_id})
-            if giveaway and not giveaway["ended"]:
+            giveaway_collection = await self.database.get_guild_collection(payload.guild_id, self.database.giveaway)
+            giveaway = await giveaway_collection.find_one({MESSAGE_ID: payload.message_id})
+            if giveaway and not giveaway[ENDED]:
                 guild = self.bot.get_guild(payload.guild_id)
                 user = guild.get_member(payload.user_id)
                 if user and not user.bot:
-                    await giveaway_collection.update_one({"message_id": payload.message_id},{"$pull": {"participants": payload.user_id}})
-                    participants = giveaway.get("participants", [])
+                    await giveaway_collection.update_one({MESSAGE_ID: payload.message_id},{"$pull": {PARTICIPANTS: payload.user_id}})
+                    participants = giveaway.get(PARTICIPANTS, [])
                     channel = self.bot.get_channel(payload.channel_id)
                     message = await channel.fetch_message(payload.message_id)
                     embed = message.embeds[0]
-                    num_p = len(participants)
-                    if num_p - 1 <= 0:
-                        num_p = 0
+                    num_p = len(participants) if len(participants) - 1 > 0 else 0
                     embed.set_field_at(2, name="Entries:", value=f"**{num_p}**")
                     await message.edit(embed=embed)
 

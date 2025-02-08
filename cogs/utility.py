@@ -1,12 +1,21 @@
+from discord import File
+from discord.ext import commands
+from io import BytesIO
+from PIL import Image
+from typing import List, Optional, Union
 import aiohttp
 import asyncio
 import discord
-from discord import File
-from discord.ext import commands
 import io
-from io import BytesIO
-from PIL import Image
-from typing import List, Literal, Optional
+
+CATEGORY = "category"
+DEFAULT_NAME = "new-channel"
+DEFAULT_ROLE = "new role"
+FORMAT = "PNG"
+FORUM = "forum"
+STAGE = "stage"
+TEXT = "text"
+VOICE = "voice"
 
 class Utility(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -15,17 +24,17 @@ class Utility(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(manage_expressions=True)
-    async def addemoji(self, ctx: commands.Context, name: str, link):
-        """ Adds emoji from given link with the given name. """
+    async def addemoji(self, ctx: commands.Context, emoji_name: str, link):
+        """Adds emoji from given link with the given name."""
         async with aiohttp.ClientSession() as session:
             async with session.get(link) as response:
                 if response.status == 200:
                     image_data = await response.read()
                     try:
-                        await ctx.guild.create_custom_emoji(name=name, image=image_data)
-                        await ctx.send(f"Emoji '{name}' added successfully!")
-                    except Exception as e:
-                        await ctx.send(f"Failed to add emoji: {e}")
+                        emoji = await ctx.guild.create_custom_emoji(name=emoji_name, image=image_data)
+                        await ctx.send(f"Emoji '{str(emoji)}' added with the name \"{emoji_name}!\"")
+                    except Exception:
+                        await ctx.send(f"Failed to add emoji.")
                 else:
                     await ctx.send("Failed to retrieve image from the link. Please make sure the URL is valid.")
     @addemoji.error
@@ -39,23 +48,23 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_expressions=True)
-    async def addsticker(self, ctx: commands.Context, name: str, link, emoji: discord.Emoji, description: Optional[str]):
+    async def addsticker(self, ctx: commands.Context, sticker_name: str, link, emoji: Union[str,discord.Emoji], description: str = ""):
         """Adds a sticker with the given name, link, and description"""
         async with aiohttp.ClientSession() as session:
             async with session.get(link) as response:
                 if response.status == 200:
                     image_data = await response.read()
                     image = Image.open(BytesIO(image_data))
-                    if image.format != "PNG":
+                    if image.format != FORMAT:
                         with BytesIO() as png_image:
-                            image.save(png_image, format="PNG")
+                            image.save(png_image, format=FORMAT)
                             png_image.seek(0)
                             file = File(png_image, filename="sticker.png")
                     else:
                         file = File(BytesIO(image_data), filename="sticker.png")
                     try:
-                        await ctx.guild.create_sticker(name=name, description=description, emoji=emoji, file=file)
-                        await ctx.send(f"Sticker '{name}' added successfully!")
+                        await ctx.guild.create_sticker(name=sticker_name, description=description, emoji=emoji, file=file)
+                        await ctx.send(f"Sticker '{sticker_name}' added successfully!")
                     except Exception as e:
                         await ctx.send(f"Failed to add sticker: {e}")
                 else:
@@ -70,14 +79,14 @@ class Utility(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def avatar(self, ctx: commands.Context, users: commands.Greedy[discord.Member]):
-        """ Displays the given user(s) global profile and server profile, if applicable """
-        users = [ctx.author] if len(users) == 0 else users
-        for user in users:
-            if user.display_avatar:
-                await ctx.send(f"User global profile: {user.display_avatar.url}")
-            if user.guild_avatar:
-                await ctx.send(f"User server profile: {user.guild_avatar.url}")
+    async def avatar(self, ctx: commands.Context, members: commands.Greedy[discord.Member]):
+        """Displays the given user(s) global profile and server profile, or the command user's profile(s)"""
+        members = [ctx.author] if len(members) == 0 else members
+        for member in members:
+            if member.display_avatar:
+                await ctx.send(f"User global profile: {member.display_avatar.url}")
+            if member.guild_avatar:
+                await ctx.send(f"User server profile: {member.guild_avatar.url}")
     @avatar.error
     async def on_avatar_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -89,10 +98,10 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_channels=True)
-    async def channelclone(self, ctx: commands.Context, channel: discord.abc.GuildChannel,*, newchannel: str = "new-channel"):
-        """ Clones a channel into a new channel with the given name """
-        await channel.clone(name=newchannel)
-        await ctx.send(f"Channel **{channel.name}** cloned into **{newchannel}**")
+    async def channelclone(self, ctx: commands.Context, channel: discord.abc.GuildChannel,*, channel_name: str = DEFAULT_NAME):
+        """Clones a channel into a new channel with the given name"""
+        await channel.clone(name=channel_name)
+        await ctx.send(f"Channel **{channel.name}** cloned into **{channel_name}**")
     @channelclone.error
     async def on_channelclone_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -106,22 +115,22 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_channels=True)
-    async def channelcreate(self, ctx: commands.Context, channelname: str, type: str):
-        """ Creates a new channel of the given type with the given name """
-        if type.lower() == 'text':
-            await ctx.guild.create_text_channel(name=channelname)
-        elif type.lower() == 'voice':
-            await ctx.guild.create_voice_channel(name=channelname)
-        elif type.lower() == 'forum':
-            await ctx.guild.create_forum(name=channelname)
-        elif type.lower() == 'stage':
-            await ctx.guild.create_stage_channel(name=channelname)
-        elif type.lower() == 'category':
-            await ctx.guild.create_category(name=channelname)
+    async def channelcreate(self, ctx: commands.Context, channel_name = DEFAULT_NAME, type: str = TEXT):
+        """Creates a new channel of the given type with the given name"""
+        if type.lower() == TEXT:
+            await ctx.guild.create_text_channel(name=channel_name)
+        elif type.lower() == VOICE:
+            await ctx.guild.create_voice_channel(name=channel_name)
+        elif type.lower() == FORUM:
+            await ctx.guild.create_forum(name=channel_name)
+        elif type.lower() == STAGE:
+            await ctx.guild.create_stage_channel(name=channel_name)
+        elif type.lower() == CATEGORY:
+            await ctx.guild.create_category(name=channel_name)
         else:
             await ctx.send("Invalid channel type. Ensure that the channel type is specified as text, voice, forum, stage, or category")
             return
-        await ctx.send(f"Successfully created new {type} channel with name **{channelname}**.")
+        await ctx.send(f"Successfully created new {type} channel with name **{channel_name}**.")
     @channelcreate.error
     async def on_channelcreate_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -136,10 +145,10 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_channels=True)
     async def channeldelete(self, ctx: commands.Context, channel: discord.abc.GuildChannel):
-        """ Deletes a given channel. """
-        name = channel.name
+        """Deletes a given channel."""
+        channel_name = channel.name
         await channel.delete()
-        await ctx.send(f"Successfully removed channel **{name}**")
+        await ctx.send(f"Successfully removed channel **{channel_name}**")
     @channeldelete.error
     async def on_channeldelete_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -153,12 +162,12 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_channels=True)
-    async def channelname(self, ctx: commands.Context, channel: discord.abc.GuildChannel, *, newname: str = "new-channel"): 
-        """ Renames a given channel to the given new name. """
+    async def channelname(self, ctx: commands.Context, channel: discord.abc.GuildChannel, *, channel_name: str = DEFAULT_NAME): 
+        """Renames a given channel to the given new name."""
         if isinstance(channel, (discord.TextChannel, discord.VoiceChannel, discord.CategoryChannel, discord.StageChannel, discord.ForumChannel)):
             old_name = channel.name
-            await channel.edit(name=newname) 
-            await ctx.send(f"**{old_name}** successfully changed to **{newname}**")
+            await channel.edit(name=channel_name) 
+            await ctx.send(f"**{old_name}** successfully changed to **{channel_name}**")
         else:
             await ctx.send("Sorry, I can't edit the name of this type of channel.")
     @channelname.error
@@ -174,8 +183,8 @@ class Utility(commands.Cog):
             
     @commands.command()
     async def check(self, ctx: commands.Context):
-        """ Gives some general information about a server, such as number of members, roles, and channels. """
-        await ctx.send(f"Some Server Info:\n- Members: {ctx.guild.member_count}\n- Roles: {len(ctx.guild.roles)}\n- Channels: {len(ctx.guild.channels)}")
+        """Gives some general information about a server, such as number of members, roles, and channels."""
+        await ctx.send(f"Some Server Info:\n- Members: {ctx.guild.member_count}\n- Roles: {len(ctx.guild.roles) - 1}\n- Channels: {len(ctx.guild.channels) - len(ctx.guild.categories)}")
     @check.error
     async def on_check_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -185,12 +194,13 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def createrole(self, ctx: commands.Context, name: str = "new role", color: discord.Color = discord.Color.default()):
-        """ Creates a new role with the given name and color, or default if no color is provided"""
-        new_role = await ctx.guild.create_role(name=name,color=color)
-        embed = discord.Embed(color=color,title="Success!")
-        embed.add_field(name="",value=f"The role **{new_role.name}** has been created.\n**Color:** {new_role.color}\n**Mentionable:** {new_role.mentionable}\n**Shown Separately:** {new_role.hoist}",inline=False)
-        embed.set_footer(text=new_role.id)
+    async def createrole(self, ctx: commands.Context, role_name: str = DEFAULT_ROLE, role_color: discord.Color = discord.Color.default()):
+        """Creates a new role with the given name and color, or default if no name/color is provided"""
+        role_name = role_name if len(role_name) <= 32 else role_name[:32]
+        role = await ctx.guild.create_role(name=role_name,color=role_color)
+        embed = discord.Embed(color=role_color,title="Success!")
+        embed.add_field(name="",value=f"The role **{role.name}** has been created.\n**Color:** {role.color}\n**Mentionable:** {role.mentionable}\n**Shown Separately:** {role.hoist}",inline=False)
+        embed.set_footer(text=role.id)
         await ctx.send(embed=embed)
     @createrole.error
     async def on_createrole_error(self, ctx: commands.Context, error):
@@ -206,12 +216,12 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_roles=True)
     async def deleterole(self, ctx: commands.Context, role: discord.Role):
-        """ Deletes a given role, if it exists. """
-        color = role.color
-        name = role.name
+        """Deletes a given role, if it exists."""
+        role_color = role.color
+        role_name = role.name
         await role.delete()
-        embed = discord.Embed(color=color,title="Success!")
-        embed.add_field(name="",value=f"The role {name} has been Removed.",inline=False)
+        embed = discord.Embed(color=role_color,title="Success!")
+        embed.add_field(name="",value=f"The role {role_name} has been Removed.",inline=False)
         await ctx.send(embed=embed)
     @deleterole.error
     async def on_deleterole_error(self, ctx: commands.Context, error):
@@ -227,7 +237,7 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def echo(self, ctx: commands.Context, channel: discord.TextChannel, *, message: str):
-        """ \"Echoes\" a message from one channel to another. """
+        """\"Echoes\" a message from one channel to another."""
         await channel.send(message)
         await ctx.message.add_reaction("✅")
     @echo.error
@@ -244,7 +254,7 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def inrole(self, ctx: commands.Context, role: discord.Role):
-        """ Determine how many users are in the given role, and dumps a text file with their username(s) and user ID(s). """
+        """Determine how many users are in the given role, and dumps a text file with their username(s) and user ID(s)."""
         members: List[discord.Member] = [member for member in ctx.guild.members if role in member.roles]
         if len(members) == 0:
             await ctx.send("Role has no members to dump.")
@@ -268,11 +278,10 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(mention_everyone=True)
     async def multiping(self, ctx: commands.Context, role1: discord.Role, role2: discord.Role):
-        """Creates a new temporary role, adds all users who have the given role1 or role2 to that new role, and mentions the role, before deleting it. """
-        new_name = role1.name + role2.name
-        if len(new_name) > 32:
-            new_name = new_name[:32]
-        multiping_role = await ctx.guild.create_role(name=new_name)
+        """Creates a new temporary role, adds all users who have the given role1 or role2 to that new role, and mentions the role, before deleting it."""
+        role_name = role1.name + role2.name
+        role_name = role_name if len(role_name) <= 32 else role_name[:32]
+        multiping_role = await ctx.guild.create_role(name=role_name)
         for member in ctx.guild.members:
             if role1 in member.roles or role2 in member.roles:
                 await member.add_roles(multiping_role)
@@ -289,25 +298,30 @@ class Utility(commands.Cog):
             await ctx.send("Invalid input. Ensure that both roles are valid and in the server.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+
+    @commands.command()
+    async def qpoll(self, ctx: commands.Context, *, question: str):
+        """Creates a quick poll with simple yes or no answers"""
+        message = await ctx.send(f"**{ctx.author.name}** asks: {question}")
+        await message.add_reaction("👍")
+        await message.add_reaction("👎")
             
     @commands.command(aliases=['sr','setrole'])
     @commands.has_permissions(manage_roles=True)
-    async def roleadd(self, ctx: commands.Context, role: discord.Role, users: commands.Greedy[discord.Member]):
-        """ Adds the given role to the given user(s) """
-        role_added_to: List[discord.Member] = []
-        failed_addition: List[discord.Member] = []
-        for user in users:
+    async def roleadd(self, ctx: commands.Context, role: discord.Role, members: commands.Greedy[discord.Member]):
+        """Adds the given role to the given user(s)"""
+        s_adds: List[discord.Member] = []
+        f_adds: List[discord.Member] = []
+        for member in members:
             try:
-                await user.add_roles(role)
-                role_added_to.append(user)
+                await member.add_roles(role)
+                s_adds.append(member)
             except Exception:
-                failed_addition.append(user)
-        if len(role_added_to) > 0:
-            success_message = "**, **".join(x.name for x in role_added_to)
-            await ctx.send(f"Added **{role.name}** to {success_message}.")
-        if len(failed_addition) > 0:
-            failed_message = "**, **".join(x.name for x in failed_addition)
-            await ctx.send(f"Failed to add **{role.name}** to {failed_message}.")
+                f_adds.append(member)
+        if len(s_adds) > 0:
+            await ctx.send(f"Added **{role.name}** to {', '.join(user.name for user in s_adds)}.")
+        if len(f_adds) > 0:
+            await ctx.send(f"Failed to add **{role.name}** to {', '.join(user.name for user in f_adds)}.")
     @roleadd.error
     async def on_roleadd_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -321,11 +335,13 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def roleclone(self, ctx: commands.Context, role: discord.Role,*, newrole: str = "new role"):
-        """ Clones a role into a new role with the given name. """
-        new_role = await ctx.guild.create_role(name=newrole,permissions=role.permissions,colour=role.colour,hoist=role.hoist,mentionable=role.mentionable,reason=f"Role cloned by {ctx.author} from {role.name}")
+    async def roleclone(self, ctx: commands.Context, role: discord.Role,*, role_name: str = DEFAULT_ROLE):
+        """Clones a role into a new role with the given name (or default if no name is provided)."""
+        if len(role_name) > 32:
+            role_name = role_name[:32]
+        new_role = await ctx.guild.create_role(name=role_name,permissions=role.permissions,colour=role.colour,hoist=role.hoist,mentionable=role.mentionable,reason=f"Role cloned by {ctx.author} from {role.name}")
         await new_role.edit(position=role.position)
-        await ctx.send(f"✅ Successfully cloned role **'{role.name}'** to **'{newrole}'**")
+        await ctx.send(f"✅ Successfully cloned role **'{role.name}'** to **'{role_name}'**")
     @roleclone.error
     async def on_roleclone_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -343,12 +359,12 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def rolecolor(self, ctx: commands.Context, role: discord.Role, color: discord.Color = discord.Color.default()):
-        """ Changes the color of given role to the given new color. """
-        old_color = role.color
-        await role.edit(color=color)
-        embed = discord.Embed(color=color, title="Role color changed")
-        embed.add_field(name="",value=f"{role.mention} had its color changed from {old_color} to {color}")
+    async def rolecolor(self, ctx: commands.Context, role: discord.Role, role_color: discord.Color = discord.Color.default()):
+        """Changes the color of given role to the given new color, or default if no color is provided."""
+        color = role.color
+        await role.edit(color=role_color)
+        embed = discord.Embed(color=role_color, title="Role color changed")
+        embed.add_field(name="",value=f"{role.mention} had its color changed from {color} to {role_color}")
         await ctx.send(embed=embed)
     @rolecolor.error
     async def on_rolecolor_error(self, ctx: commands.Context, error):
@@ -364,24 +380,25 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_roles=True)
     async def rolein(self, ctx: commands.Context, role1: discord.Role, role2: discord.Role):
-        """ Adds role2 to all members in role1, if they do not already have role2. """
-        num_members = 0
-        num_failed_members = 0 
+        """Adds role2 to all members in role1, if they do not already have role2."""
+        num_s_adds = 0
+        num_f_adds = 0
         for member in ctx.guild.members:
             if role1 in member.roles and role2 not in member.roles:
                 try:
                     await member.add_roles(role2)
-                    num_members += 1
+                    num_s_adds += 1
                 except Exception:
-                    num_failed_members += 1
+                    num_f_adds += 1
                     continue
+        if num_s_adds == 0 and num_f_adds == 0:
+            await ctx.send(f"There are no members with the role {role1.name}")
+            return
         embed = discord.Embed(color=discord.Color.brand_green(),title="Success")
-        message_s = "members" if num_members != 1 else "member"
-        message_f = "members" if num_failed_members != 1 else "member"
-        if num_members > 0:
-            embed.add_field(name="",value=f"Added {role2.mention} to {num_members} {message_s}.")
-        if num_failed_members > 0:
-            embed.add_field(name="",value=f"Failed to add {role2.mention} to {num_failed_members} {message_f}.")
+        if num_s_adds > 0:
+            embed.add_field(name="",value=f"Added {role2.mention} to {num_s_adds} {'members' if num_s_adds != 1 else 'member'}.")
+        if num_f_adds > 0:
+            embed.add_field(name="",value=f"Failed to add {role2.mention} to {num_f_adds} {'members' if num_f_adds != 1 else 'member'}.")
         await ctx.send(embed=embed)
     @rolein.error
     async def on_rolein_error(self, ctx: commands.Context, error):
@@ -396,12 +413,13 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def rolename(self, ctx: commands.Context, role: discord.Role, *, name: str = "new role"):
-        """ Changes the name of the given role to the given new name. """
-        old_name = role.name
-        await role.edit(name=name)
+    async def rolename(self, ctx: commands.Context, role: discord.Role, *, role_name: str = DEFAULT_ROLE):
+        """Changes the name of the given role to the given new name."""
+        role_name = role_name if len(role_name) <= 32 else role_name[:32]
+        old_role_name = role.name
+        await role.edit(name=role_name)
         embed = discord.Embed(color=role.color, title="Role name changed")
-        embed.add_field(name="",value=f"{role.mention} had its name changed from **{old_name}** to **{name}**")
+        embed.add_field(name="",value=f"{role.mention} had its name changed from **{old_role_name}** to **{role_name}**")
         await ctx.send(embed=embed)
     @rolename.error
     async def on_rolename_error(self, ctx: commands.Context, error):
@@ -417,11 +435,11 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_roles=True)
     async def rolerall(self, ctx: commands.Context, roles: commands.Greedy[discord.Role]):
-        """ Removes all members from the given role(s) """
+        """Removes all members from the given role(s)"""
         for role in roles:
             num_members = 0
             for member in ctx.guild.members:
-                if role in member.roles:
+                if role in member.roles and role != ctx.guild.default_role:
                     try:
                         await member.remove_roles(role)
                         num_members += 1
@@ -441,22 +459,23 @@ class Utility(commands.Cog):
              
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def roleremove(self, ctx: commands.Context, role: discord.Role, users: commands.Greedy[discord.Member]):
-        """ Removes the given role from the given user(s) """
-        role_removed_from: List[discord.Member] = []
-        failed_removal: List[discord.Member] = []
-        for user in users:
+    async def roleremove(self, ctx: commands.Context, role: discord.Role, members: commands.Greedy[discord.Member]):
+        """Removes the given role from the given user(s)"""
+        s_removals: List[discord.Member] = []
+        f_removals: List[discord.Member] = []
+        for member in members:
             try:
-                await user.remove_roles(role)
-                role_removed_from.append(user)
+                if role in member.roles:
+                    await member.remove_roles(role)
+                    s_removals.append(member)
+                else:
+                    f_removals.append(role)
             except Exception:
-                failed_removal.append(user)
-        if len(role_removed_from) > 0:
-            success_message = "**, **".join(x.name for x in role_removed_from)
-            await ctx.send(f"Removed **{role.name}** from {success_message}.")
-        if len(failed_removal) > 0:
-            failed_message = "**, **".join(x.name for x in failed_removal)
-            await ctx.send(f"Failed to remove **{role.name}** from {failed_message}.")
+                f_removals.append(member)
+        if len(s_removals) > 0:
+            await ctx.send(f"Removed **{role.name}** from {'**, **'.join(member.name for member in s_removals)}.")
+        if len(f_removals) > 0:
+            await ctx.send(f"Failed to remove **{role.name}** from {'**, **'.join(member.name for member in f_removals)}.")
     @roleremove.error
     async def on_roleremove_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -470,18 +489,17 @@ class Utility(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def roleremoveall(self, ctx: commands.Context, users: commands.Greedy[discord.Member]):
-        """ Removes all roles from the given user(s). """
-        for user in users:
-            for role in user.roles:
-                if role.name != "@everyone":
+    async def roleremoveall(self, ctx: commands.Context, members: commands.Greedy[discord.Member]):
+        """Removes all roles from the given user(s)."""
+        for member in members:
+            for role in member.roles:
+                if role != member.guild.default_role:
                     try:
-                        await user.remove_roles(role)
+                        await member.remove_roles(role)
                     except Exception:
                         pass
-        message = "**, **".join(x.name for x in users)
         embed = discord.Embed(color=discord.Color.brand_green(),title="Success")
-        embed.add_field(name="",value=f"Removed all roles from {message}.")
+        embed.add_field(name="",value=f"Removed all roles from {'**, **'.join(member.name for member in members)}.")
         await ctx.send(embed=embed)
     @roleremoveall.error
     async def on_roleremoveall_error(self, ctx: commands.Context, error):
@@ -497,24 +515,24 @@ class Utility(commands.Cog):
     @commands.command()
     @commands.has_permissions(manage_roles=True)
     async def rolerin(self, ctx: commands.Context, role1: discord.Role, role2: discord.Role):
-        """ Removes role2 from all members in role1, if they have role2. """
-        num_members = 0
-        num_failed_members = 0
+        """Removes role2 from all members in role1, if they have both roles."""
+        num_s_removes = 0
+        num_f_removes = 0
         for member in ctx.guild.members:
-            if role1 in member.roles and role2 not in member.roles:
+            if role1 in member.roles and role2 in member.roles:
                 try:
                     await member.remove_roles(role2)
-                    num_members += 1
+                    num_s_removes += 1
                 except Exception:
-                    num_failed_members += 1
+                    num_f_removes += 1
                     pass
         embed = discord.Embed(color=discord.Color.brand_green(),title="Success")
-        message_s = "members" if num_members != 1 else "member"
-        message_f = "members" if num_failed_members != 1 else "member"
-        if num_members > 0:
-            embed.add_field(name="",value=f"Removed {role2.mention} from {num_members} {message_s}.")
-        if num_failed_members > 0:
-            embed.add_field(name="",value=f"Failed to remove {role2.mention} from {num_failed_members} {message_f}.")
+        if num_s_removes == 0 and num_f_removes == 0:
+            await ctx.send(f"There are no members with the role {role1.name}")
+        if num_s_removes > 0:
+            embed.add_field(name="",value=f"Removed {role2.mention} from {num_s_removes} {'members' if num_s_removes != 1 else 'member'}.")
+        if num_f_removes > 0:
+            embed.add_field(name="",value=f"Failed to remove {role2.mention} from {'members' if num_f_removes != 1 else 'member'}.")
         await ctx.send(embed=embed)
     @rolerin.error
     async def on_rolerin_error(self, ctx: commands.Context, error):
@@ -529,22 +547,23 @@ class Utility(commands.Cog):
             
     @commands.command()
     async def serverinfo(self, ctx: commands.Context):
-        """ Displays information about the server (features, boost level, number of channels, etc.) """
+        """Displays information about the server (features, boost level, number of channels, etc.)"""
         guild = ctx.guild  
-        voice_channels = len(guild.voice_channels)
-        humans = len([member for member in guild.members if not member.bot])
-        bots = ctx.guild.member_count - humans
+        voice_channels_num = len(guild.voice_channels)
+        num_members = len([member for member in guild.members if not member.bot])
+        num_bots = ctx.guild.member_count - num_members
         verification_levels = {discord.VerificationLevel.none: "None", discord.VerificationLevel.low: "Low", discord.VerificationLevel.medium: "Medium", discord.VerificationLevel.high: "High (╯°□°）╯︵  ┻━┻", discord.VerificationLevel.highest: "Extreme ┻━┻ミ＼(≧ﾛ≦＼)"}
         embed = discord.Embed(title=f"Info for {guild.name}", color=discord.Color.blue(),timestamp=guild.created_at)
+        print(guild.icon)
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
         embed.add_field(name="Owner", value=guild.owner.name, inline=True)
         embed.add_field(name="Features", value="\n".join([f"✅ {feature.replace('_', ' ').title()}" for feature in guild.features]) if len(guild.features) > 0 else "None", inline=True)
         embed.add_field(name="Boosts", value=f"Level {guild.premium_tier} ({guild.premium_subscription_count} boosts)", inline=True)
         embed.add_field(name="Channels", value=f"💬 {len(guild.text_channels)} ({len([channel for channel in guild.text_channels if not channel.permissions_for(guild.default_role).read_messages])} locked)\n"
-                                               f"🔊 {voice_channels} ({len([channel for channel in guild.voice_channels if not channel.permissions_for(guild.default_role).connect])} locked)", inline=True)
-        embed.add_field(name="Info", value=f"Verification level: {verification_levels[guild.verification_level]}\n[Icon Link]({guild.icon.url})", inline=True)
-        embed.add_field(name="Members", value=f"Total: {guild.member_count}\nHumans: {humans}\nBots: {bots}", inline=True)
+                                               f"🔊 {voice_channels_num} ({len([channel for channel in guild.voice_channels if not channel.permissions_for(guild.default_role).connect])} locked)", inline=True)
+        embed.add_field(name="Info", value=f"Verification level: {verification_levels[guild.verification_level]}\n[Icon Link]({guild.icon.url if guild.icon else 'No Link'})", inline=True)
+        embed.add_field(name="Members", value=f"Total: {guild.member_count}\nHumans: {num_members}\nBots: {num_bots}", inline=True)
         embed.add_field(name="Roles", value=f"{len(guild.roles)} roles", inline=True)
         embed.set_footer(text=f"ID: {guild.id}, Created")
         await ctx.send(embed=embed)
@@ -557,7 +576,7 @@ class Utility(commands.Cog):
             
     @commands.command(aliases=['changetemp', 'temperature', 'changetemperature', 'ct'])
     async def temp(self, ctx: commands.Context, temp: str):
-        """ Converts the given temperature to Celsius (C) if Farenheit (F) is given, and vice versa. """
+        """Converts the given temperature to Celsius (C) if Farenheit (F) is given, and vice versa."""
         if temp[-1].upper() == 'C':
             temp_c = float(temp[:-1])
             temp_f = (temp_c * 9/5) + 32
@@ -578,14 +597,14 @@ class Utility(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def userinfo(self, ctx: commands.Context, users: commands.Greedy[discord.Member]):
-        """ Displays information about given user(s) (username, ID, number of roles, account creation/join date, etc.) """
-        users = [ctx.author] if len(users) == 0 else users
-        for user in users:
+    async def userinfo(self, ctx: commands.Context, members: commands.Greedy[discord.Member]):
+        """Displays information about given user(s) (username, ID, number of roles, account creation/join date, etc.), or command user if none is provided"""
+        members = [ctx.author] if len(members) == 0 else members
+        for member in members:
             try:
-                await ctx.send(f"**__User info for {user.mention}:__**\n- **Name:** {user.name}\n- **# of Roles:** {len(user.roles)}\n- **User ID:** {user.id}\n- **Created:** {discord.utils.format_dt(user.created_at, 'R')}\n- **Joined:** {discord.utils.format_dt(user.joined_at, 'R')}\n- **Name Color:** {user.color}\n- **Avatar Link:** {user.avatar.url}")
+                await ctx.send(f"**__User info for {member.mention}:__**\n- **Name:** {member.name}\n- **# of Roles:** {len(member.roles)}\n- **User ID:** {member.id}\n- **Created:** {discord.utils.format_dt(member.created_at, 'R')}\n- **Joined:** {discord.utils.format_dt(member.joined_at, 'R')}\n- **Name Color:** {member.color}\n- **Avatar Link:** {member.avatar.url}")
             except Exception:
-                await ctx.send(f"Could not find information for user {user.name}")
+                await ctx.send(f"Could not find information for user {member.name}")
                 pass
     @userinfo.error
     async def on_userinfo_error(self, ctx: commands.Context, error):

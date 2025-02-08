@@ -1,14 +1,19 @@
-import asyncio
 from datetime import datetime, timedelta, timezone
-import discord
 from discord.ext import commands
-from moderation import Moderation
-import re
+from cogs.moderation import Moderation
 from typing import List, Union 
 from utility.finder import find_channel, find_int, find_role, find_time
 from utility.guild import Database
+import asyncio
+import discord
+import re
 
-automod_emotes = ["⏲️", "🔨", "🔇", "🔊", "👢", "1️⃣", "2️⃣", "3️⃣", "❌"]
+AUTOMOD_EMOTES = ["⏲️", "🔨", "🔇", "🔊", "👢", "1️⃣", "2️⃣", "3️⃣", "❌"]
+DRAMA_CHANNEL = "drama_channel"
+DRAMA_MESSAGE = "drama_message"
+MESSAGE_ID = "message_id"
+CHANNEL_ID = "channel_id"
+USER = "user"
 
 class Automod(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -16,81 +21,75 @@ class Automod(commands.Cog):
         self.bot = bot
         self.database = Database(self.bot)
     
-    async def account_age(self, guild: discord.Guild, user: discord.Member) -> bool:
+    async def account_age(self, guild: discord.Guild, member: discord.Member) -> bool:
         """Checks the minimum account age for a server and if an account matches that criteria"""
-        account_age = await find_time(guild, self.database, "min_account_age")
-        if not account_age:
+        min_account_age = await find_time(guild, self.database, self.database.min_account_age)
+        if not min_account_age:
             return False
-        account_age_threshold = discord.utils.utcnow() - account_age
-        return bool(user.created_at >= account_age_threshold)
+        latest_time = discord.utils.utcnow() - min_account_age
+        return bool(member.created_at >= latest_time)
     
-    async def automod_mute(self, moderation: Moderation, guild: discord.Guild, users: List[Union[discord.Member, discord.User]], mute_role: discord.Role, user_p: discord.Member, reason: str, time: timedelta = None, time_str: str = None):
+    async def automod_mute(self, moderation: Moderation, guild: discord.Guild, members: List[discord.Member], mute_role: discord.Role, responsible: Union[discord.User,discord.Member], reason: str, time: timedelta = None, text: str = None):
         """Performs the mute based on the reaction given in the automod"""
-        mutes, failed_mutes = await moderation.perform_mute(guild, [users[0]], mute_role, user_p, reason, time_str)
-        if len(mutes) > 0:
-            await moderation.log_punishment("mute", guild, users[0], reason, user_p, time_str)
+        await moderation.punishment_steps(guild, "mute", members, reason, responsible, text, mute_role, None)
         if time:
             await asyncio.sleep(time.total_seconds())
-            successful_unmutes, failed_unmutes = await moderation.perform_unmute(guild, [users[0]], mute_role, f"Automatic unmute from mute made {time_str} ago by {user_p.name} (ID: {user_p.id})")
-            if len(successful_unmutes) > 0:
-                await moderation.log_punishment("unmute", guild, users[0], f"Automatic unmute from mute made {time_str} ago by {user_p.name} (ID: {user_p.id})", user_p)
+            await moderation.punishment_steps(guild, "unmute", members, f"Automatic unmute from mute made {text} ago by {responsible.name} (ID: {responsible.id})", responsible, mute_role, None, None)
     
     async def check_link(self, content: str, guild: discord.Guild) -> bool:
         """Checks if a message contains a banned link"""
-        bad_links = await self.database.get_config(guild.id, "bad_links")
+        bad_links = await self.database.get_config(guild.id, self.database.bad_links)
         if not bad_links or len(bad_links) <= 0:
             return False
-        bad_link_pattern = '|'.join([r'\b' + r'[\s]*'.join(list(link)) + r'\b' for link in bad_links])
+        bad_link_pattern = '|'.join([r'\b' + r'[\s]*'.join(list(bad_link)) + r'\b' for bad_link in bad_links])
         bad_link_regex = re.compile(bad_link_pattern, re.IGNORECASE)
         return bool(bad_link_regex.search(content))
     
     async def check_invite(self, content: str, guild: discord.Guild) -> bool:
         """Checks if a message contains an invite from a non-whitelisted guild"""
-        invite_whitelist = await self.database.get_config(guild.id, "invite_whitelist")
-        if len(invite_whitelist) == 0:
-            return False
-        invite_pattern = r"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/[a-zA-Z0-9]+"
-        invites = re.findall(invite_pattern,content)
-        if invites:
-            invite_links = re.findall(r"discord(?:app)?\.com\/invite\/([a-zA-Z0-9]+)", content) + \
-                           re.findall(r"discord\.(gg|io|me|li)\/([a-zA-Z0-9]+)", content)
-            invite_codes = [invite[-1] for invite in invite_links]
-            for invite_code in invite_codes:
-                try:
-                    invite = await self.bot.fetch_invite(invite_code)
-                    if invite.guild.id not in invite_whitelist:
-                        return True
-                except Exception:
-                    pass
+        invite_whitelist = await self.database.get_config(guild.id, self.database.invite_whitelist)
+        if len(invite_whitelist) > 0:
+            invite_pattern = r"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/[a-zA-Z0-9]+"
+            invites = re.findall(invite_pattern,content)
+            if invites:
+                invite_links = re.findall(r"discord(?:app)?\.com\/invite\/([a-zA-Z0-9]+)", content) + \
+                            re.findall(r"discord\.(gg|io|me|li)\/([a-zA-Z0-9]+)", content)
+                invite_codes = [invite[-1] for invite in invite_links]
+                for invite_code in invite_codes:
+                    try:
+                        invite = await self.bot.fetch_invite(invite_code)
+                        if invite.guild.id not in invite_whitelist:
+                            return True
+                    except Exception:
+                        pass
         return False
     
-    async def check_mentions(self, guild: discord.Guild, user: discord.Member) -> bool:
-        """Checks if the user exceeds the number of text mentions in a given time"""
-        user_id = user.id
-        current_time = discord.utils.utcnow()
-        recent_mentions = 0
-        mentionspam_time = await find_time(guild, self.database, "mentionspam_time")
-        mentionspam_amount = await find_int(guild, self.database, "mentionspam_amount")
+    async def check_mentions(self, guild: discord.Guild, member: discord.Member) -> bool:
+        """Checks if the member exceeds the number of text mentions in a given time"""
+        member_id = member.id
+        mentions = 0
+        mentionspam_time = await find_time(guild, self.database, self.database.mentionspam_time)
+        mentionspam_amount = await find_int(guild, self.database, self.database.mentionspam_amount)
         if not mentionspam_amount or not mentionspam_time:
             return False
-        current_datetime = datetime.fromtimestamp(current_time, timezone.utc)
-        after_time = current_datetime - mentionspam_time
+        current_datetime = discord.utils.utcnow()
+        earliest_time = current_datetime - mentionspam_time
         messages: List[discord.Message] = []
         for channel in guild.text_channels:
             try:
-                async for msg in channel.history(limit=mentionspam_amount, after=after_time):
-                    if msg.author.id == user_id:
+                async for msg in channel.history(limit=mentionspam_amount, after=earliest_time):
+                    if msg.author.id == member_id:
                         text_mentions = await self.has_mention(msg)
                         if text_mentions:
                             messages.append(msg)
-                            recent_mentions += len(text_mentions)
-                        if recent_mentions >= mentionspam_amount:
+                            mentions += len(text_mentions)
+                        if mentions >= mentionspam_amount:
                             for message in messages:
                                 await message.delete()
                             return True
             except discord.Forbidden:
                 continue
-        if recent_mentions >= mentionspam_amount:
+        if mentions >= mentionspam_amount:
             for message in messages:
                 await message.delete()
             return True
@@ -98,44 +97,45 @@ class Automod(commands.Cog):
 
     async def check_word(self, content: str, guild: discord.Guild) -> bool:
         """Checks if a message contains a bad word"""
-        bad_words = await self.database.get_config(guild.id, "bad_words")
+        bad_words = await self.database.get_config(guild.id, self.database.bad_words)
         if not bad_words or len(bad_words) <= 0:
             return False
         bad_word_pattern = '|'.join([r'\b' + r'[\s]*'.join(list(word)) + r'\b' for word in bad_words])
         bad_word_regex = re.compile(bad_word_pattern, re.IGNORECASE)
         return bool(bad_word_regex.search(content))
     
-    async def check_time(self, guild: discord.Guild, user: discord.Member) -> bool:
+    async def check_time(self, guild: discord.Guild, member: discord.Member) -> bool:
         """Grabs the time limit for a server and if the user violated that time limit"""
-        current_time = discord.utils.utcnow()
-        time_limit = await find_time(guild, self.database, "time_limit")
+        time_limit = await find_time(guild, self.database, self.database.time_limit)
         if not time_limit:
             return False
-        join_time = user.joined_at
-        time_since_join = current_time - join_time
+        join_time = member.joined_at
+        time_since_join = discord.utils.utcnow() - join_time
         return bool(time_since_join < time_limit)
-
-    async def send_drama_alert(self, guild: discord.Guild, type: str, message: discord.Message):
-        """Sends a message in the drama channel"""
-        time = discord.utils.utcnow()
-        automod = await self.database.get_guild_collection(guild.id, "automod")
-        drama_channel = await find_channel(guild, self.database, "drama_channel")
-        if not drama_channel:
-            return
-        embed = discord.Embed(title=f"{type}",description=f"Potential trouble found in {message.channel.mention}",timestamp=time)
-        async for msg in message.channel.history(limit=5,oldest_first=True):
-            embed.add_field(name=msg.author.name, value=msg.content, inline=False)
-        embed.add_field(name=message.author.name,value=message.content,inline=False)
-        drama_message = await drama_channel.send(embed=embed)
-        drama_entry = {"drama_channel": drama_channel.id,"drama_message": drama_message.id,"message_channel_id": message.channel.id,"message_id": message.id,"user": message.author.id}
-        automod.insert_one(drama_entry)
-        for emote in automod_emotes:
-            await drama_message.add_reaction(emote)
     
-    async def has_mention(self, message: discord.Message):
+    async def has_mention(self, message: discord.Message) -> List:
+        """Checks if a given message has a user or role mention within the message"""
         user_mention_pattern = re.compile(r"<@!?\d+>")
         role_mention_pattern = re.compile(r"<@&\d+>")
         return user_mention_pattern.findall(message.content) + role_mention_pattern.findall(message.content)
+
+    async def send_drama_alert(self, guild: discord.Guild, type: str, message: discord.Message):
+        """Sends a message in the drama channel"""
+        current_time = discord.utils.utcnow()
+        start_time = datetime(current_time.year, current_time.month, current_time.day, tzinfo=timezone.utc)
+        automod = await self.database.get_guild_collection(guild.id, self.database.automod)
+        drama_channel = await find_channel(guild, self.database, self.database.drama_channel)
+        if not drama_channel:
+            return
+        embed = discord.Embed(title=f"{type}",description=f"Potential trouble found in {message.channel.mention}",timestamp=current_time)
+        async for msg in message.channel.history(limit=5,after=start_time,oldest_first=True):
+            embed.add_field(name=msg.author.name, value=msg.content, inline=False)
+        embed.add_field(name=message.author.name,value=message.content,inline=False)
+        drama_message = await drama_channel.send(embed=embed)
+        entry = {DRAMA_CHANNEL: drama_channel.id,DRAMA_MESSAGE: drama_message.id,CHANNEL_ID: message.channel.id,MESSAGE_ID: message.id, USER: message.author.id}
+        automod.insert_one(entry)
+        for emote in AUTOMOD_EMOTES:
+            await drama_message.add_reaction(emote)
             
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -156,26 +156,29 @@ class Automod(commands.Cog):
             return
         if await self.check_link(message.content, message.guild):
             await message.delete()
-            await message.author.ban(reason="Automatic action carried out for posting links.")
+            await moderation.punishment_steps(message.guild, "ban", [message.author], "Automatic action carried out for posting links.", self.bot.user, None, None, None)
             return
         bad_words = await self.check_word(message.content, message.guild)
         if bad_words:
             await message.delete()
             await message.channel.send("Please refrain from using innapropriate language.")
-            await moderation.perform_warn(message.guild, [message.author], self.bot.user, "Automatic action carried out for using a blacklisted word")
+            await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for using a blacklisted word", self.bot.user, None, None, None)
             await self.send_drama_alert(message.guild, "blacklistedwords", message)
         bad_invite = await self.check_invite(message.content, message.guild)
         if bad_invite:
             await message.delete()
             await message.channel.send("Please refrain from posting other Discord invites.")
-            await moderation.perform_warn(message.guild, [message.author], self.bot.user, "Automatic action carried out for posting invites")
+            await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for posting invites", self.bot.user, None, None, None)
             await self.send_drama_alert(message.guild, "discordinvites", message)
-        mentionspam = await self.has_mention(message)
-        deleted = await self.check_mentions(message.guild, message.author)
-        if deleted:
-            await message.channel.send("Please refrain from using so many mentions!")
-            await moderation.perform_warn(message.guild, [message.author], self.bot.user, "Automatic action carried out for spamming mentions")
-            await self.send_drama_alert(message.guild, "mentionspam", message)
+        mentions = await self.has_mention(message)
+        if mentions:
+            mentionspam = await self.check_mentions(message.guild, message.author)
+            if mentionspam:
+                await message.channel.send("Please refrain from using so many mentions!")
+                await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for spamming mentions", self.bot.user, None, None, None)
+                await self.send_drama_alert(message.guild, "mentionspam", message)
+        else:
+            mentionspam = False
         if bad_words or bad_invite or mentionspam:
             if await self.check_time(message.guild, message.author):
                 await message.guild.ban(message.author, reason="Automatic action carried out for violating automod within join time limit.")   
@@ -186,52 +189,45 @@ class Automod(commands.Cog):
         if payload.user_id == self.bot.user.id:
             return
         guild = self.bot.get_guild(payload.guild_id)
-        user_p = guild.get_member(payload.user_id)
-        if user_p.bot:
+        payload_user = guild.get_member(payload.user_id)
+        if payload_user.bot:
             return
-        perms = user_p.guild_permissions
+        perms = payload_user.guild_permissions
         channel = self.bot.get_channel(payload.channel_id)
         if not channel:
             return
-        automod = await self.database.get_guild_collection(payload.guild_id,"automod")
-        drama_channel = await find_channel(guild, self.database, "drama_channel")
+        automod = await self.database.get_guild_collection(payload.guild_id,self.database.automod)
+        drama_channel = await find_channel(guild, self.database, self.database.drama_channel)
         if not drama_channel or drama_channel.id != payload.channel_id:
             return
-        message_entry = await automod.find_one({"drama_message": payload.message_id})
-        if not message_entry:
+        entry = await automod.find_one({DRAMA_MESSAGE: payload.message_id})
+        if not entry:
             return
-        mute_role = await find_role(guild, self.database, "mute_role")
-        user_id = message_entry["user"]
-        user = guild.get_member(user_id)
+        mute_role = await find_role(guild, self.database, self.database.mute_role)
+        user = guild.get_member(entry[USER])
         moderation: Moderation = self.bot.get_cog("Moderation")
         if payload.emoji.name == "⏲️" and perms.moderate_members:
-            timeouts, failed_timeouts = await moderation.perform_timeout(guild, [user], timedelta(days=27), user_p, "Drama watcher timeout.", "27d")
-            if len(timeouts) > 0:
-                await moderation.log_punishment("timeout", guild, user, "Drama watcher timeout", user_p)
+            await moderation.punishment_steps(guild, "timeout", [user], "Drama watcher timeout.", payload_user, "27d", None, timedelta(days=27))
             await asyncio.sleep(2419200)
-            untimeouts, failed_untimeouts = await moderation.perform_untimeout(guild, [user], user_p, f"Automatic untimeout from timeout made 27d ago by {user_p.name} (ID: {user_p.id})")
-            if len(untimeouts) > 0:
-                await moderation.log_punishment("untimeout", guild, user, f"Automatic untimeout from timeout made 27d ago by {user_p.name} (ID: {user_p.id})", user_p)
+            await moderation.punishment_steps(guild, "untimeout", [user], f"Automatic untimeout from timeout made 27d ago by {payload_user.name} (ID: {payload_user.id})", payload_user, None, None, None)
         elif payload.emoji.name == "🔨" and perms.ban_members:
-            await moderation.perform_ban(guild, [user], user_p, "Drama watcher ban.")
+            await moderation.punishment_steps(guild, "ban", [user], "Drama watcher ban.", payload_user, None, None, None)
         elif payload.emoji.name == "🔇" and mute_role and perms.manage_roles:
-            await self.automod_mute(moderation, guild, [user], mute_role, user_p, "Drama watcher permanent mute", None, None)
+            await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher permanent mute", None, None)
         elif payload.emoji.name == "🔊" and mute_role and perms.manage_roles:
-            unmutes, failed_unmutes = await moderation.perform_unmute(guild, [user], mute_role, user_p, "Drama watcher unmute.")
-            if len(unmutes) > 0:
-                await moderation.log_punishment("unmute", guild, user, "Drama watcher unmute.", user_p)
+            await moderation.punishment_steps(guild, "unmute", [user], "Drama watcher unmute.", payload_user, None, mute_role, None)
         elif payload.emoji.name == "👢" and perms.kick_members:
-            await moderation.perform_kick(guild, [user], user_p, "Drama watcher kick.")
+            await moderation.punishment_steps(guild, "kick", [user], "Drama watcher kick.", payload_user, None, None, None)
         elif payload.emoji.name == "1️⃣" and mute_role and perms.manage_roles:
-            await self.automod_mute(moderation, guild, [user], mute_role, user_p, "Drama-watcher 12-hour mute", timedelta(hours=12), "12h")
+            await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama-watcher 12-hour mute", timedelta(hours=12), "12h")
         elif payload.emoji.name == "2️⃣" and mute_role and perms.manage_roles:
-            await self.automod_mute(moderation, guild, [user], mute_role, user_p, "Drama watcher 24-hour mute", timedelta(hours=24), "24h")
+            await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher 24-hour mute", timedelta(hours=24), "24h")
         elif payload.emoji.name == "3️⃣" and mute_role and perms.manage_roles:
-            await self.automod_mute(moderation, guild, [user], mute_role, user_p, "Drama watcher 48-hour mute", timedelta(hours=48), "48h")
+            await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher 48-hour mute", timedelta(hours=48), "48h")
         elif payload.emoji.name == "❌" and perms.manage_messages:
             payload_message = await channel.fetch_message(payload.message_id)
             await payload_message.delete()
-            await automod.delete_one({"message_id": payload.message_id})
+            await automod.delete_one({MESSAGE_ID: payload.message_id})
 
 async def setup(bot: commands.Bot): 
     """Sets up the Automod Cog"""

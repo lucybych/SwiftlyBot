@@ -1,6 +1,6 @@
-import discord
 from discord.ext import commands
 from utility.finder import has_roles
+import discord
 
 tnb_server_id = 932843700751597608
 staff_roles = [933217733603123240,933217763957284956]
@@ -10,7 +10,7 @@ class TNB(commands.Cog):
         """Initializes the TNB module"""
         self.bot = bot
     
-    async def staff_check(self, ctx: commands.Context):
+    async def staff_check(self, ctx: commands.Context) -> bool:
         """Check if the user has staff roles."""
         if ctx.guild.id != tnb_server_id:
             return False
@@ -21,7 +21,7 @@ class TNB(commands.Cog):
         
     @commands.command()
     async def betterdiscord(self, ctx: commands.Context):
-        """ Better Discord copypasta, for when users ask about BetterDiscord, Vencord, or any other modified clients. """
+        """Better Discord copypasta, for when users ask about BetterDiscord, Vencord, or any other modified clients."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.blue(),title="\"Is using BetterDiscord or other modified clients banned?\"")
             embed.add_field(name="",value="**__No, using BetterDiscord is not ban-worthy.__**"
@@ -45,7 +45,7 @@ class TNB(commands.Cog):
             
     @commands.command(aliases=['dead'])
     async def deadchat(self, ctx: commands.Context):
-        """ Dead chat copypasta, for staff use in TNB when users ask about dead chat or bring up how dead the chat is. """
+        """Dead chat copypasta, for staff use in TNB when users ask about dead chat or bring up how dead the chat is."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.red(),title="On the matter of saying \"dead chat\" and such...")
             embed.add_field(name="",value="While it has become somewhat of a meme on Discord, we would like to ask you refrain from using the \"dead chat lol\" meme here. This is because..."
@@ -64,7 +64,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def nick(self, ctx: commands.Context):
-        """ Nickname copypasta, for staff use in TNB when users ask about nicknames or changing their nickname. """
+        """Nickname copypasta, for staff use in TNB when users ask about nicknames or changing their nickname."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(),title="How do I change my nickname?")
             embed.add_field(name="",value="In order to help people get used to our rules on usernames/nicknames, you can't change your own nickname until you reach Level 10. If you want to change your name before then, you can ask a member of the staff to do it for you; just tell them what name you want in <#932853269636730880>, or feel free to DM them instead!"
@@ -79,7 +79,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def nsfw(self, ctx: commands.Context):
-        """ NSFW copypasta, for staff use in TNB when users ask about NSFW or NSFW channels. """
+        """NSFW copypasta, for staff use in TNB when users ask about NSFW or NSFW channels."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(),title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
             embed.add_field(name="",value="This server does *not* have any NSFW channels. We are not an NSFW server, nor will we be adding any NSFW channels in the future. This is meant to be a more mature environment, but NSFW things do not fall in line with the culture we wish to have in the server. If you're here just for NSFW, please find another server for that kind of stuff.")
@@ -93,7 +93,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def roles(self, ctx: commands.Context):
-        """ Roles copypasta, for staff use in TNB when users ask about roles. """
+        """Roles copypasta, for staff use in TNB when users ask about roles."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.blue(),title="Where can I get roles?")
             embed.add_field(name="",value="Most of our assignable roles can be found in Channels and Roles, which contains:"
@@ -115,7 +115,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def scam(self, ctx: commands.Context):
-        """ Scam copypasta, for staff use in TNB when users ask or talk about scams. """
+        """Scam copypasta, for staff use in TNB when users ask or talk about scams."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_gray(),title="Common Discord Scams and Hacking:")
             embed.add_field(name="",value="We are aware of several common ways to scam/hack users on Discord. A friend of the server made a Google Doc for their own server, for tips on how to protect yourself from them. The Doc can be found here: <https://bit.ly/3fu5wIl>",inline=False)
@@ -129,7 +129,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def selfies(self, ctx: commands.Context):
-        """ Selfies copypasta, for staff use in TNB when users ask about selfies or a selfies channel. """
+        """Selfies copypasta, for staff use in TNB when users ask about selfies or a selfies channel."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(),title="Is there a selfies channel?")
             embed.add_field(name="",value="This server does *not* have a selfie channel, and we do not allow selfies in the server. This is to keep minors safe and to prevent creeps.")
@@ -143,7 +143,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def tnb(self, ctx: commands.Context):
-        """ Easy access to the permanent server invite for TNB. """
+        """Easy access to the permanent server invite for TNB."""
         if ctx.guild.id != tnb_server_id:
             return
         await ctx.send("Wanna invite your friends to The Nerd Brigade? Here's our perma-invite!: https://discord.gg/XBqnnvA6tz")
@@ -156,7 +156,7 @@ class TNB(commands.Cog):
             
     @commands.command(aliases=['trades'])
     async def trade(self, ctx: commands.Context):
-        """ Trades copypasta, for staff use in TNB when users ask about Pokemon trades or anything similar. """
+        """Trades copypasta, for staff use in TNB when users ask about Pokemon trades or anything similar."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(),title="Looking for Pokemon trades?")
             embed.add_field(name="",value="We're not a trading server, and [as the rules note](https://discord.com/channels/385956732888678402/385972494429061131/782737693079109693) we generally don't appreciate people who aren't active in the server using us to get trades done. Plenty of dedicated Discord servers exist (try looking on [Discord's site](https://discord.com/servers?query=pokemon+trades), [Discord.me](https://discord.me/servers?search=pokemon+trades&language=1), or [Disboard](https://disboard.org/search?keyword=pokemon+trades)), as do forums like [GameFAQs](https://gamefaqs.gamespot.com/), [Serebii](https://forums.serebii.net/), [Smogon](https://www.smogon.com/forums/forums/wi-fi.53/), and [any number of subreddits](https://www.reddit.com/search/?q=pokemon+trades&type=sr), so please use those instead.",inline=False)
@@ -170,7 +170,7 @@ class TNB(commands.Cog):
             
     @commands.command(aliases=['trolls'])
     async def troll(self, ctx: commands.Context):
-        """ Troll copypasta, for staff use in TNB when users ask about trolls. """
+        """Troll copypasta, for staff use in TNB when users ask about trolls."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why were they banned?\" / \"What happened?\"")
             embed.add_field(name="",
@@ -208,7 +208,7 @@ class TNB(commands.Cog):
             
     @commands.command()
     async def vcs(self, ctx: commands.Context):
-        """ Voice chat copypasta, for staff use in TNB when users ask about voice channels/VCs. """
+        """Voice chat copypasta, for staff use in TNB when users ask about voice channels/VCs."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_gray(),title="\"Do you have VCs?\" / \"Where are the VCs?\"")
             embed.add_field(name="",value="This server does have several voice channels; however, they're not available until you reach Level 10. This is to help prevent trolls from entering the server and immediately bugging the VCs, on top of how hard they are to be moderated in general.")

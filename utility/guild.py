@@ -1,7 +1,7 @@
 from datetime import timedelta
-import discord
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
+import discord
 import os
 
 load_dotenv("variables.env")
@@ -23,45 +23,92 @@ class Database:
             self.bot = bot
             mongo_url = os.getenv("MONGODB_URI")
             self.mongo_client = AsyncIOMotorClient(mongo_url)
+            self.automod = "automod"
+            self.config = "config"
+            self.giveaway = "giveaway"
+            self.level = "level"
+            self.moderation = "moderation"
+            self.quarantine = "quarantine"
+            self.starboard = "starboard"
+            self.voicelink = "voicelink"
+            self.id = "id"
+            self.roles = "roles"
+            self.reminders = "reminders"
+            self.bad_links = "bad_links"
+            self.bad_words = "bad_words"
+            self.time_limit = "time_limit"
+            self.min_account_age = "min_account_age"
+            self.invite_whitelist = "invite_whitelist"
+            self.drama_channel = "drama_channel"
+            self.warn_threshold = "warn_threshold"
+            self.mentionspam_time = "mentionspam_time"
+            self.mentionspam_amount = "mentionspam_amount"
+            self.giveaway_blacklist = "giveaway_blacklist"
+            self.giveaway_hosts = "giveaway_hosts"
+            self.levels_enabled = "levels_enabled"
+            self.level_blacklist = "level_blacklist"
+            self.level_messages = "level_messages"
+            self.default_level_message = "default_level_message"
+            self.level_roles = "level_roles"
+            self.server_log = "server_log"
+            self.join_leave_log = "join_leave_log"
+            self.member_log = "member_log"
+            self.message_log = "message_log"
+            self.voice_log = "voice_log"
+            self.log_ignores = "log_ignores"
+            self.ban_limit = "ban_limit"
+            self.mod_log = "mod_log"
+            self.mute_role = "mute_role"
+            self.quarantine_role = "quarantine_role"
+            self.stickyroles = "stickyroles"
+            self.sticky_blacklist = "sticky_blacklist"
+            self.starboard_channel = "starboard_channel"
+            self.star_threshold = "star_threshold"
+            self.default_emote = "default_emote"
+            self.starboard_blacklist = "starboard_blacklist"
+            self.welcome_channel = "welcome_channel"
+            self.join_message = "join_message"
+            self.leave_message = "leave_message"
+            self.ban_message = "ban_message"
             self.default_config = {
-                "bad_links": [],
-                "bad_words": [],
-                "time_limit": "0s",
-                "min_account_age": "0s",
-                "invite_whitelist": [],
-                "drama_channel": 0,
-                "warn_threshold": 0,
-                "mentionspam_time": "0s",
-                "mentionspam_amount": 0,
-                "giveaway_blacklist": [],
-                "giveaway_hosts": [],
-                "levels_enabled": False,
-                "level_blacklist": [],
-                "level_messages": {},
-                "default_level_message": "",
-                "level_roles": {},
-                "server_log": 0,
-                "join_leave_log": 0,
-                "member_log": 0,
-                "message_log": 0,
-                "voice_log": 0,
-                "log_ignores": [],
-                "ban_limit": 0,
-                "mod_log": 0,
-                "mute_role": 0,
-                "quarantine_role": 0,
-                "stickyroles": [],
-                "sticky_blacklist": [],
-                "starboard_channel": 0,
-                "star_threshold": 0,
-                "default_emote": 0,
-                "starboard_blacklist": [],
-                "welcome_channel": 0,
-                "join_message": "",
-                "leave_message": "",
-                "ban_message": "",
+                self.bad_links: [],
+                self.bad_words: [],
+                self.time_limit: "0s",
+                self.min_account_age: "0s",
+                self.invite_whitelist: [],
+                self.drama_channel: 0,
+                self.warn_threshold: 0,
+                self.mentionspam_time: "0s",
+                self.mentionspam_amount: 0,
+                self.giveaway_blacklist: [],
+                self.giveaway_hosts: [],
+                self.levels_enabled: False,
+                self.level_blacklist: [],
+                self.level_messages: {},
+                self.default_level_message: "",
+                self.level_roles: {},
+                self.server_log: 0,
+                self.join_leave_log: 0,
+                self.member_log: 0,
+                self.message_log: 0,
+                self.voice_log: 0,
+                self.log_ignores: [],
+                self.ban_limit: 0,
+                self.mod_log: 0,
+                self.mute_role: 0,
+                self.quarantine_role: 0,
+                self.stickyroles: [],
+                self.sticky_blacklist: [],
+                self.starboard_channel: 0,
+                self.star_threshold: 0,
+                self.default_emote: 0,
+                self.starboard_blacklist: [],
+                self.welcome_channel: 0,
+                self.join_message: "",
+                self.leave_message: "",
+                self.ban_message: "",
             }
-            self.collections_other = ["id", "voicelink", "config", "starboard", "roles", "reminders", "moderation", "quarantine", "level", "giveaway", "automod"]
+            self.collections_other = [self.id, self.voicelink, self.config, self.starboard, self.roles, self.reminders, self.moderation, self.quarantine, self.level, self.giveaway, self.automod]
 
     async def get_guild_database(self, guild_id): 
         """Grabs the database associated with the given guild ID"""
@@ -114,19 +161,22 @@ class Database:
 
 async def parse_time_string(time_str: str) -> timedelta:
         """Parses a time string to return a valid timedelta"""
-        time_str = time_str.lower()
-        time_parts = {"y": 31536000, "mo": 2592000, "w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
-        time_str = time_str.lower()
-        total_seconds = 0
-        for part in time_str.split():
-            num = int(part[:-1])
-            if num < 0:
-                return None
-            unit = part[-1]
-            if unit not in time_parts:
-                return None
-            total_seconds += num * time_parts[unit]
-        return timedelta(seconds=total_seconds)
+        try:
+            time_str = time_str.lower()
+            time_parts = {"y": 31536000, "mo": 2592000, "w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
+            time_str = time_str.lower()
+            total_seconds = 0
+            for part in time_str.split():
+                num = int(part[:-1])
+                if num < 0:
+                    return None
+                unit = part[-1]
+                if unit not in time_parts:
+                    return None
+                total_seconds += num * time_parts[unit]
+            return timedelta(seconds=total_seconds)
+        except Exception:
+            return None
 
 async def expand_time_string(time_str: str) -> str:
     """Expands a time string into a proper sentence"""
@@ -140,7 +190,10 @@ async def expand_time_string(time_str: str) -> str:
             return None
         words += str(num) + " " + time_parts[unit]
         words += ","
-    return words[:-1]
+    words = words[:-1]
+    if num == 1:
+        return words[:-1]
+    return words
 
 async def ordinal(n):
     """Converts a number into an ordinal that can be used in sentences"""
