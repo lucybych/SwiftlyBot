@@ -8,7 +8,7 @@ import asyncio
 import discord
 import re
 
-AUTOMOD_EMOTES = ["⏲️", "🔨", "🔇", "🔊", "👢", "1️⃣", "2️⃣", "3️⃣", "❌"]
+AUTOMOD_EMOTES = ["⏲️", "🔨", "🔇", "🔊", "👢", "🗑️", "1️⃣", "2️⃣", "3️⃣", "❌"]
 DRAMA_CHANNEL = "drama_channel"
 DRAMA_MESSAGE = "drama_message"
 MESSAGE_ID = "message_id"
@@ -48,7 +48,7 @@ class Automod(commands.Cog):
     async def check_invite(self, content: str, guild: discord.Guild) -> bool:
         """Checks if a message contains an invite from a non-whitelisted guild"""
         invite_whitelist = await self.database.get_config(guild.id, self.database.invite_whitelist)
-        if len(invite_whitelist) > 0:
+        if invite_whitelist and len(invite_whitelist) > 0:
             invite_pattern = r"(https?:\/\/)?(www\.)?(discord\.(gg|io|me|li)|discordapp\.com\/invite)\/[a-zA-Z0-9]+"
             invites = re.findall(invite_pattern,content)
             if invites:
@@ -218,6 +218,8 @@ class Automod(commands.Cog):
             await moderation.punishment_steps(guild, "unmute", [user], "Drama watcher unmute.", payload_user, None, mute_role, None)
         elif payload.emoji.name == "👢" and perms.kick_members:
             await moderation.punishment_steps(guild, "kick", [user], "Drama watcher kick.", payload_user, None, None, None)
+        elif payload.emoji.name == "🗑️" and perms.manage_messages:
+            await moderation.punishment_steps(guild, "delete", [user], "Drama watcher delete", payload_user, None, None, None, None)
         elif payload.emoji.name == "1️⃣" and mute_role and perms.manage_roles:
             await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama-watcher 12-hour mute", timedelta(hours=12), "12h")
         elif payload.emoji.name == "2️⃣" and mute_role and perms.manage_roles:

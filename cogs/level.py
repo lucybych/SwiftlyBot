@@ -70,6 +70,9 @@ class Level(commands.Cog):
         """Gives the number of experience to the given user, or the command user if no user is specified."""
         if xp < 0 or xp >= sys.maxsize:
             raise commands.UserInputError
+        if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
+            await ctx.send("Levels and XP are currently disabled.")
+            return
         user = user if user else ctx.author
         level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
         entry = await level_collection.find_one({USER_ID: user.id})
@@ -182,6 +185,9 @@ class Level(commands.Cog):
         """Takes away the given number of XP away from the given user or the command user."""
         if xp < 0 or xp >= sys.maxsize:
             raise commands.UserInputError
+        if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
+            await ctx.send("Levels and XP are currently disabled.")
+            return
         xp_user = user if user else ctx.author
         level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
         entry = await level_collection.find_one({USER_ID: xp_user.id})
@@ -230,6 +236,9 @@ class Level(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def resetxp(self, ctx: commands.Context, user: Optional[Union[discord.User, discord.Member]]):
         """Resets the experience of the given user or command user to 0 (Deletes their level entry)"""
+        if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
+            await ctx.send("Levels and XP are currently disabled.")
+            return
         user = user if user else ctx.author
         level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
         entry = await level_collection.find_one({USER_ID: user.id})
@@ -289,14 +298,18 @@ class Level(commands.Cog):
             if not entry_date or (current_time - entry_date) >= timedelta(seconds=60):
                 total_xp = entry[TOTAL_XP] + xp
                 if xp >= entry[XP_FOR_NEXT_LEVEL]:
+                    print("Level up!")
                     new_level = entry[LEVEL] + 1
                     xp_at_level = total_xp - await self.determine_cumulative_xp(new_level)
                     xp_for_next_level = await self.determine_cumulative_xp(new_level+1) - total_xp
-                    award_message = await self.award_message(message.guild, new_level)
-                    if award_message:
-                        award_message = award_message.replace("{lvl}", str(new_level))
-                        award_message = award_message.replace("{mention}", message.author.mention)
-                        await message.channel.send(award_message)
+                    if not await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.blocked_messages):
+                        award_message = await self.award_message(message.guild, new_level)
+                        if award_message:
+                            award_message = award_message.replace("{lvl}", str(new_level))
+                            award_message = award_message.replace("{mention}", message.author.mention)
+                            await message.channel.send(award_message)
+                    else:
+                        print("Cannot give message")
                     role = await self.award_role(message.guild, new_level)
                     if role:
                         await message.author.add_roles(role)

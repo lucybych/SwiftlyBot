@@ -50,6 +50,7 @@ class Database:
             self.level_messages = "level_messages"
             self.default_level_message = "default_level_message"
             self.level_roles = "level_roles"
+            self.blocked_messages = "blocked_messages"
             self.server_log = "server_log"
             self.join_leave_log = "join_leave_log"
             self.member_log = "member_log"

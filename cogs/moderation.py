@@ -19,13 +19,15 @@ RKICK_REASON = "Silent or requested kick"
 RMUTE_EXPIRY_REASON = "Expiry of silent or requested unmute"
 RMUTE_REASON = "Silent or requested mute"
 RQUARANTINE_REASON = "Silent or requested quarantine"
+RTEMPBAN_EXPIRY_REASON = "Expiry of silent or requested tempban"
+RTEMPBAN_REASON = "Silent or requested tempban"
 RTIMEOUT_EXPIRY_REASON = "Expiry of silent or requested untimeout"
 RTIMEOUT_REASON = "Silent or requested timeout"
 RUNBAN_REASON = "Silent or requested unban"
 RUNMUTE_REASON = "Silent or requested unmute"
 RUNQUARANTINE_REASON = "Silent or requested unquarantine"
 RUNTIMEOUT_REASON = "Silent or requested untimeout"
-SILENT_REASONS = [RBAN_REASON, RKICK_REASON, RMUTE_EXPIRY_REASON, RMUTE_REASON, RQUARANTINE_REASON, RTIMEOUT_EXPIRY_REASON, RTIMEOUT_REASON, RUNBAN_REASON, RUNMUTE_REASON, RUNQUARANTINE_REASON, RUNTIMEOUT_REASON]
+SILENT_REASONS = [RBAN_REASON, RKICK_REASON, RMUTE_EXPIRY_REASON, RMUTE_REASON, RQUARANTINE_REASON, RTEMPBAN_REASON, RTEMPBAN_EXPIRY_REASON, RTIMEOUT_EXPIRY_REASON, RTIMEOUT_REASON, RUNBAN_REASON, RUNMUTE_REASON, RUNQUARANTINE_REASON, RUNTIMEOUT_REASON]
 
 DURATION = "duration"
 ID = "id"
@@ -87,7 +89,7 @@ class Moderation(commands.Cog):
             LOG_CHANNEL_ID: mod_log.id,
             TIMESTAMP: current_time,
         }
-        if (type == "mute" or type == "timeout") and duration:
+        if duration:
             entry[DURATION] = duration
         moderation.insert_one(entry)
 
@@ -153,6 +155,8 @@ class Moderation(commands.Cog):
             await self.create_log_entry(guild, mod_log, discord.Color.brand_green(), "unquarantine", offender, reason, responsible, duration, evidence)
         elif type == "warn":
             await self.create_log_entry(guild, mod_log, discord.Color.yellow(), "warn", offender, reason, responsible, duration, evidence)
+        elif type == "delete":
+            await self.create_log_entry(guild, mod_log, discord.Color(000000), "Message deleted", offender, reason, responsible, duration, evidence)
 
     async def perform_punishment(self, guild: discord.Guild, type: str, user: Union[discord.Member, discord.User], reason: str, until: Optional[timedelta] , role: Optional[discord.Role]) -> bool:
         """Performs the given type of punishment, then indicates if it was successfully applied."""
@@ -252,7 +256,6 @@ class Moderation(commands.Cog):
         \n3. Sends the user a DM with the punishment information
         \nSteps 2 and 3 will only occur if the punishment was successfully applied"""
         type = type.lower()
-        print(type)
         s_punishments = []
         f_punishments = []
         for user in users:
@@ -1019,6 +1022,23 @@ class Moderation(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
     
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    async def rtempban(self, ctx: commands.Context, users: commands.Greedy[Union[discord.User, discord.Member]], duration: str):
+        time_val = await parse_time_string(duration)
+        if not time_val:
+            await ctx.send("Invalid duration input. Please make sure it is a valid time (Ex. 4w or 2mo). (Note that for permanent bans, use m?ban)")
+            return
+        time_str = await expand_time_string(duration)
+        s_bans, f_bans = await self.punishment_steps(ctx.guild, "ban", users, RTEMPBAN_REASON, ctx.author, duration, None, time_val, ctx.message.attachments)
+        if len(s_bans) > 0:
+            await ctx.send(f"Banned {', '.join(user.name for user in s_bans)} for {time_str}.")
+        if len(f_bans) > 0:
+            await ctx.send(f"Failed to ban {', '.join(user.name for user in f_bans)}.")
+        if s_bans:
+            await asyncio.sleep(time_val.total_seconds())
+            await self.punishment_steps(ctx.guild, "unban", s_bans, RTEMPBAN_EXPIRY_REASON, ctx.author, None, None, None, None)
+    
     #Done
     @commands.command()
     @commands.has_permissions(moderate_members=True)
@@ -1146,7 +1166,6 @@ class Moderation(commands.Cog):
     @commands.has_permissions(ban_members=True)
     async def sb(self, ctx: commands.Context, users: commands.Greedy[Union[discord.Member, discord.User]]):
         """Bans the given user(s) if possible with the reason of scamming"""
-        print("scam ban")
         await self.generic_ban(ctx, users, "Scammer and/or compromised account", "For trying to scam people.", ctx.message.attachments)
     @sb.error
     async def on_sb_error(self, ctx: commands.Context, error):
@@ -1204,6 +1223,23 @@ class Moderation(commands.Cog):
             await ctx.send("Invalid input. Ensure all users are valid.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    async def tempban(self, ctx: commands.Context, users: commands.Greedy[Union[discord.Member, discord.User]], duration: str, *, reason: str = "No reason provided"):
+        time_val = await parse_time_string(duration)
+        if not time_val:
+            await ctx.send("Invalid duration input. Please make sure it is a valid time (Ex. 4w or 2mo). (Note that for permanent bans, use m?ban)")
+            return
+        time_str = await expand_time_string(duration)
+        s_bans, f_bans = await self.punishment_steps(ctx.guild, "ban", users, reason, ctx.author, duration, None, time_val, ctx.message.attachments)
+        if len(s_bans) > 0:
+            await ctx.send(f"Banned {', '.join(user.name for user in s_bans)} for {time_str}.")
+        if len(f_bans) > 0:
+            await ctx.send(f"Failed to ban {', '.join(user.name for user in f_bans)}.")
+        if s_bans:
+            await asyncio.sleep(time_val.total_seconds())
+            await self.punishment_steps(ctx.guild, "unban", s_bans, f"Expiry of temporary ban made {time_str} ago by {ctx.author.name} (ID: {ctx.author.id}).", ctx.author, None, None, None, None)
 
     #Done
     @commands.command()
@@ -1389,7 +1425,7 @@ class Moderation(commands.Cog):
         target = entry.target
         user = self.bot.get_user(target.id)
         reason = entry.reason if entry.reason else f"no reason given, use m?reason {id} <text> to add one"
-        if entry.action == discord.AuditLogAction.kick and entry.reason != RKICK_REASON:
+        if entry.action == discord.AuditLogAction.kick and entry.reason not in SILENT_REASONS:
             await self.create_log_entry(guild, mod_log, discord.Color.blue(), "kick", user, reason, entry.user, None, None)
         elif entry.action == discord.AuditLogAction.member_update:
             timed_out_before: datetime = None
@@ -1404,11 +1440,11 @@ class Moderation(commands.Cog):
                     break
             responsible = self.timeout_cache.pop(target, entry.user)
             responsible = self.bot.get_user(responsible.id)
-            if not timed_out_before and timed_out_after and entry.reason != RTIMEOUT_REASON:
+            if not timed_out_before and timed_out_after and entry.reason not in SILENT_REASONS:
                 duration = timed_out_after - time
                 duration_seconds = math.ceil(int(duration.total_seconds()))
                 await self.create_log_entry(guild, mod_log, discord.Color.orange(), "timeout", user, reason, responsible, f"{duration_seconds} seconds", None)
-            if timed_out_before and not timed_out_after and entry.reason != RUNTIMEOUT_REASON and entry.reason != RTIMEOUT_EXPIRY_REASON:
+            if timed_out_before and not timed_out_after and entry.reason not in SILENT_REASONS:
                 await self.create_log_entry(guild, mod_log, discord.Color.green(), "untimeout", user, reason, responsible, None, None)
 
     @commands.Cog.listener()
@@ -1424,7 +1460,7 @@ class Moderation(commands.Cog):
             return
         async for entry in guild.audit_logs(action=discord.AuditLogAction.ban, limit=1):
             id = await self.database.get_next_id(guild.id)
-            if entry.target.id == user.id and entry.reason != RBAN_REASON:
+            if entry.target.id == user.id and entry.reason not in SILENT_REASONS:
                 reason = entry.reason if entry.reason else f"no reason given, use m?reason {id} <text> to add one"
                 await self.create_log_entry(guild, mod_log, discord.Color.red(), "ban", user, reason, entry.user, None)
         if guild.id in EMD_SERVERS and reason != BANSYNC_REASON:
@@ -1446,7 +1482,7 @@ class Moderation(commands.Cog):
             return
         async for entry in guild.audit_logs(action=discord.AuditLogAction.unban, limit=1):
             id = await self.database.get_next_id(guild.id)
-            if entry.target.id == user.id and entry.reason != RUNBAN_REASON:
+            if entry.target.id == user.id and entry.reason not in SILENT_REASONS:
                 reason = entry.reason if entry.reason else f"no reason given, use m?reason {id} <text> to add one"
                 await self.create_log_entry(guild, mod_log, discord.Color.green(), "unban", user, reason, entry.user, None)
         if guild.id in EMD_SERVERS and reason != BANSYNC_REASON:

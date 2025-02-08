@@ -430,6 +430,11 @@ class Config(commands.Cog):
 #Level configurations
     @commands.command()
     @commands.has_permissions(manage_guild=True)
+    async def lvlblocks(self, ctx: commands.Context, item: Optional[Union[discord.Role, discord.User, discord.Member, discord.abc.GuildChannel]]):
+        await config.update_id_list(ctx, self.database, self.database.blocked_messages, item, "list of blocked level up messages")
+   
+    @commands.command()
+    @commands.has_permissions(manage_guild=True)
     async def dlevelmsg(self, ctx: commands.Context, *, message: Optional[str]):
         """Sets or disables the default level message (If no default level message, no level up messages or only special level up messages will be posted)"""
         await config.update_str(ctx, self.database, self.database.default_level_message, message, "default level message")
