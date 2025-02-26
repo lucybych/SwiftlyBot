@@ -1,6 +1,8 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from discord.ext import commands
-from typing import Optional, Union
+from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorCursor
+from pymongo.results import DeleteResult, UpdateResult
+from typing import Any, Optional, Union
 from utility.finder import has_valid_id, find_bool
 from utility.guild import Database
 import discord
@@ -18,21 +20,21 @@ XP_AT_LEVEL = "xp_at_level"
 XP_FOR_NEXT_LEVEL = "xp_for_next_level"
 
 class Level(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """Initializes the Level module"""
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.database = Database(self.bot)
     
     async def award_message(self, guild: discord.Guild, level: int) -> str:
         """Determines the message to send when a user has leveled up"""
-        level_messages = await self.database.get_config(guild.id, self.database.level_messages)
+        level_messages: Any = await self.database.get_config(guild.id, self.database.level_messages)
         if level_messages and str(level) in level_messages:
             return level_messages[str(level)]
         return await self.database.get_config(guild.id, self.database.default_level_message)
     
     async def award_role(self, guild: discord.Guild, level: int) -> discord.Role:
         """Determines the role to give when a user has leveled up, if any"""
-        level_roles = await self.database.get_config(guild.id, self.database.level_roles)
+        level_roles: Any = await self.database.get_config(guild.id, self.database.level_roles)
         if level_roles and str(level) in level_roles:
             return guild.get_role(level_roles[str(level)])
         return None
@@ -51,7 +53,7 @@ class Level(commands.Cog):
     
     async def determine_role(self, guild: discord.Guild, level: int) -> discord.Role:
         while level != 0:
-            role = await self.award_role(guild, level)
+            role: discord.Role = await self.award_role(guild, level)
             if role:
                 return role
             level -= 1
@@ -66,31 +68,27 @@ class Level(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def givexp(self, ctx: commands.Context, xp: int, user: Optional[Union[discord.Member, discord.User]]):
+    async def givexp(self, ctx: commands.Context, xp: int, user: Optional[Union[discord.Member, discord.User]]) -> None:
         """Gives the number of experience to the given user, or the command user if no user is specified."""
         if xp < 0 or xp >= sys.maxsize:
             raise commands.UserInputError
         if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
-            await ctx.send("Levels and XP are currently disabled.")
-            return
+            return await ctx.send("Levels and XP are currently disabled.")
         user = user if user else ctx.author
-        level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
-        entry = await level_collection.find_one({USER_ID: user.id})
-        total_xp = entry[TOTAL_XP] + xp if entry else xp
-        last_message = entry[LAST_MESSAGE] if entry else None
-        level = entry[LEVEL] if entry else 0
-        new_level = await self.determine_level(total_xp)
-        xp_at_level = await self.determine_cumulative_xp(new_level)
-        new_xp_at_level = total_xp - xp_at_level
-        xp_at_next_level = await self.determine_cumulative_xp(new_level+1)
-        new_xp_at_next_level = xp_at_next_level - total_xp
-        update = await level_collection.update_one({USER_ID: user.id},{"$set": {LEVEL: new_level,TOTAL_XP: total_xp,XP_AT_LEVEL: new_xp_at_level,XP_FOR_NEXT_LEVEL: new_xp_at_next_level,LAST_MESSAGE: last_message,}},upsert=True)
-        if not entry or update.modified_count > 0:
-            await ctx.send(f"Successfully added {xp} XP to user **{user.name}**.")
-        else:
-            await ctx.send(f"Failed to add {xp} XP to user **{user.name}**")
-        max_lvl_role = await self.determine_role(ctx.guild, level)
-        new_max_lvl_role = await self.determine_role(ctx.guild, new_level)
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
+        entry: Any = await level_collection.find_one({USER_ID: user.id})
+        total_xp: int = entry[TOTAL_XP] + xp if entry else xp
+        last_message: str = entry[LAST_MESSAGE] if entry else None
+        level: int = entry[LEVEL] if entry else 0
+        new_level: int = await self.determine_level(total_xp)
+        xp_at_level: int = await self.determine_cumulative_xp(new_level)
+        new_xp_at_level: int = total_xp - xp_at_level
+        xp_at_next_level: int = await self.determine_cumulative_xp(new_level+1)
+        new_xp_at_next_level: int = xp_at_next_level - total_xp
+        update: UpdateResult = await level_collection.update_one({USER_ID: user.id},{"$set": {LEVEL: new_level,TOTAL_XP: total_xp,XP_AT_LEVEL: new_xp_at_level,XP_FOR_NEXT_LEVEL: new_xp_at_next_level,LAST_MESSAGE: last_message,}},upsert=True)
+        await ctx.send(f"Successfully added {xp} XP to user **{user.name}**.") if (not entry or update.modified_count > 0) else await ctx.send(f"Failed to add {xp} XP to user **{user.name}**")
+        max_lvl_role: discord.Role = await self.determine_role(ctx.guild, level)
+        new_max_lvl_role: discord.Role = await self.determine_role(ctx.guild, new_level)
         if new_max_lvl_role:
             try:
                 await user.add_roles(new_max_lvl_role)
@@ -102,7 +100,7 @@ class Level(commands.Cog):
             except Exception:
                 pass
     @givexp.error
-    async def on_givexp_error(self, ctx: commands.Context, error):
+    async def on_givexp_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only include a valid number and user, or omit it to add XP to yourself.")
         elif isinstance(error, commands.MissingPermissions):
@@ -115,24 +113,23 @@ class Level(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command(aliases=['lb'])
-    async def leaderboard(self, ctx: commands.Context, page: int = 1):
+    async def leaderboard(self, ctx: commands.Context, page: int = 1) -> None:
         """Displays the users with the most XP, each page contains 20 entries (Page 1 is 1-20, 2 is 21-40, etc)"""
         per_page = 20
-        start_position = (page - 1) * per_page
-        end_position = start_position + per_page
-        level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
-        cursor = level_collection.find().sort(TOTAL_XP, -1)
-        users = await cursor.to_list(None)
-        total_users = len(users)
+        start_position: int = (page - 1) * per_page
+        end_position: int = start_position + per_page
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
+        cursor: AsyncIOMotorCursor = level_collection.find().sort(TOTAL_XP, -1)
+        users: list = await cursor.to_list(None)
+        total_users: int = len(users)
         if total_users <= 0:
             raise commands.UserNotFound(["experience"])
-        total_pages = (total_users + per_page - 1) // per_page
+        total_pages: int = (total_users + per_page - 1) // per_page
         if page < 1 or page > total_pages:
-            await ctx.send(f"Invalid page number. Please select a page between 1 and {total_pages}, inclusive.")
-            return
+            return await ctx.send(f"Invalid page number. Please select a page between 1 and {total_pages}, inclusive.")
         embed = discord.Embed(title=f"Leaderboard for {ctx.guild.name}", color=discord.Color.blurple())
         for idx, user_entry in enumerate(users[start_position:end_position], start=start_position + 1):
-            user = self.bot.get_user(user_entry[USER_ID])
+            user: discord.User = self.bot.get_user(user_entry[USER_ID])
             if user:
                 embed.add_field(name="",value=f"{idx}. {user.mention} {user_entry[TOTAL_XP]}xp lvl {user_entry[LEVEL]}",inline=False)
         await ctx.send(embed=embed)
@@ -148,19 +145,19 @@ class Level(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command(aliases=['lvl'])
-    async def level(self, ctx: commands.Context, user: Optional[Union[discord.User,discord.Member]]):
+    async def level(self, ctx: commands.Context, user: Optional[Union[discord.User,discord.Member]]) -> None:
         """Checks the level for the given user, or the command user"""
         user = user if user else ctx.author
-        level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
-        entry = await level_collection.find_one({USER_ID: user.id})
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
+        entry: Any = await level_collection.find_one({USER_ID: user.id})
         if entry:
-            level = entry[LEVEL]
-            cursor = level_collection.find().sort(TOTAL_XP, -1)
-            users = await cursor.to_list(None)
-            rank = next((index + 1 for index, entry in enumerate(users) if entry[USER_ID] == user.id), None)
-            xp_at_level = await self.determine_cumulative_xp(level)
-            xp_at_next_level = await self.determine_cumulative_xp(level+1)
-            xp_next_level = xp_at_next_level - xp_at_level
+            level: int = entry[LEVEL]
+            cursor: AsyncIOMotorCursor = level_collection.find().sort(TOTAL_XP, -1)
+            users: list[Any] = await cursor.to_list(None)
+            rank: int = next((index + 1 for index, entry in enumerate(users) if entry[USER_ID] == user.id), None)
+            xp_at_level: int = await self.determine_cumulative_xp(level)
+            xp_at_next_level: int = await self.determine_cumulative_xp(level+1)
+            xp_next_level: int = xp_at_next_level - xp_at_level
             embed = discord.Embed(color=user.color, title="",description=f"Level card for {user.mention}:")
             embed.add_field(name="", value=f"**Level:** {level}", inline=False)
             embed.add_field(name="", value=f"**XP:** {entry[XP_AT_LEVEL]}/{xp_next_level}", inline=False)
@@ -169,7 +166,7 @@ class Level(commands.Cog):
         else:
             raise commands.UserNotFound(["experience"])
     @level.error
-    async def on_level_error(self, ctx: commands.Context, error):
+    async def on_level_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only provide a valid user or omit it to get your own stats.")
         elif isinstance(error, commands.UserNotFound) or isinstance(error, commands.CommandInvokeError):
@@ -181,34 +178,30 @@ class Level(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def removexp(self, ctx: commands.Context, xp: int, user: Optional[Union[discord.User, discord.Member]]):
+    async def removexp(self, ctx: commands.Context, xp: int, user: Optional[Union[discord.User, discord.Member]]) -> discord.Message | None:
         """Takes away the given number of XP away from the given user or the command user."""
         if xp < 0 or xp >= sys.maxsize:
             raise commands.UserInputError
         if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
-            await ctx.send("Levels and XP are currently disabled.")
-            return
-        xp_user = user if user else ctx.author
-        level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
-        entry = await level_collection.find_one({USER_ID: xp_user.id})
+            return await ctx.send("Levels and XP are currently disabled.")
+        xp_user: discord.Member | discord.User = user if user else ctx.author
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
+        entry: Any = await level_collection.find_one({USER_ID: xp_user.id})
         if entry:
-            total_xp = entry[TOTAL_XP] - xp if entry[TOTAL_XP] - xp >= 0 else 0
-            last_message = entry[LAST_MESSAGE]
-            level = entry[LEVEL]
+            total_xp: int = entry[TOTAL_XP] - xp if entry[TOTAL_XP] - xp >= 0 else 0
+            last_message: datetime = entry[LAST_MESSAGE]
+            level: int = entry[LEVEL]
         else:
             raise commands.UserNotFound(["experience"])
-        new_level = await self.determine_level(total_xp)
-        xp_at_level = await self.determine_cumulative_xp(new_level)
-        new_xp_at_level = total_xp - xp_at_level
-        xp_at_next_level = await self.determine_cumulative_xp(new_level+1)
-        new_xp_at_next_level = xp_at_next_level - total_xp
-        update = await level_collection.update_one({USER_ID: xp_user.id},{"$set": {LEVEL: new_level,TOTAL_XP: total_xp,XP_AT_LEVEL: new_xp_at_level,XP_FOR_NEXT_LEVEL: new_xp_at_next_level,LAST_MESSAGE: last_message,}},upsert=True)
-        if not entry or update.modified_count > 0:
-            await ctx.send(f"Successfully removed {xp} XP from user **{xp_user.name}**.")
-        else:
-            await ctx.send(f"Failed to remove {xp} XP from user **{xp_user.name}**.")
-        max_lvl_role = await self.determine_role(ctx.guild, level)
-        new_max_lvl_role = await self.determine_role(ctx.guild, new_level)
+        new_level: int = await self.determine_level(total_xp)
+        xp_at_level: int  = await self.determine_cumulative_xp(new_level)
+        new_xp_at_level: int = total_xp - xp_at_level
+        xp_at_next_level: int = await self.determine_cumulative_xp(new_level+1)
+        new_xp_at_next_level: int = xp_at_next_level - total_xp
+        update: UpdateResult = await level_collection.update_one({USER_ID: xp_user.id},{"$set": {LEVEL: new_level,TOTAL_XP: total_xp,XP_AT_LEVEL: new_xp_at_level,XP_FOR_NEXT_LEVEL: new_xp_at_next_level,LAST_MESSAGE: last_message,}},upsert=True)
+        await ctx.send(f"Successfully removed {xp} XP from user **{xp_user.name}**.") if (not entry or update.modified_count > 0) else await ctx.send(f"Failed to remove {xp} XP from user **{xp_user.name}**.")
+        max_lvl_role: discord.Role = await self.determine_role(ctx.guild, level)
+        new_max_lvl_role: discord.Role = await self.determine_role(ctx.guild, new_level)
         if new_max_lvl_role:
             try:
                 await xp_user.add_roles(new_max_lvl_role)
@@ -220,7 +213,7 @@ class Level(commands.Cog):
             except Exception:
                 pass
     @removexp.error
-    async def on_removexp_error(self, ctx: commands.Context, error):
+    async def on_removexp_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only include a valid number and user, or omit it to remove your own XP.")
         elif isinstance(error, commands.MissingPermissions):
@@ -234,29 +227,28 @@ class Level(commands.Cog):
 
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def resetxp(self, ctx: commands.Context, user: Optional[Union[discord.User, discord.Member]]):
+    async def resetxp(self, ctx: commands.Context, user: Optional[Union[discord.User, discord.Member]]) -> discord.Message | None:
         """Resets the experience of the given user or command user to 0 (Deletes their level entry)"""
         if not await find_bool(ctx.guild, self.database, self.database.levels_enabled):
-            await ctx.send("Levels and XP are currently disabled.")
-            return
+            return await ctx.send("Levels and XP are currently disabled.")
         user = user if user else ctx.author
-        level_collection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
-        entry = await level_collection.find_one({USER_ID: user.id})
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.level)
+        entry: Any = await level_collection.find_one({USER_ID: user.id})
         if entry:
-            level = entry[LEVEL]
-            role = await self.determine_role(ctx.guild, level)
+            level: int = entry[LEVEL]
+            role: discord.Role = await self.determine_role(ctx.guild, level)
             if role and user in ctx.guild.members:
                 try:
                     await user.remove_roles(role)
                 except Exception:
                     pass
-        result = await level_collection.delete_many({USER_ID: user.id})
+        result: DeleteResult = await level_collection.delete_many({USER_ID: user.id})
         if result.deleted_count > 0:
             await ctx.send(f"Successfully removed all XP from user **{user.name}**.")
         else:
             await ctx.send(f"Failed to reset XP on {user.name}. Make sure that they have level data.")
     @resetxp.error
-    async def on_resetxp_error(self, ctx: commands.Context, error):
+    async def on_resetxp_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only include a valid user, or omit it to reset your own XP.")
         elif isinstance(error, commands.MissingPermissions):
@@ -267,23 +259,16 @@ class Level(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message) -> None:
         """When a user sends a message, it checks if the user is blacklisted from gaining XP. If not, they will be awarded xp between 15 and 25. If they level up, they will be alerted if such a level messages exists"""
-        if message.author.bot:
+        if message.author.bot or message.content.startswith(self.bot.command_prefix) or not await find_bool(message.guild, self.database, self.database.levels_enabled) or await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.level_blacklist):
             return
-        if message.content.startswith(self.bot.command_prefix):
-            return
-        if not await find_bool(message.guild, self.database, self.database.levels_enabled):
-            return
-        blacklisted = await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.level_blacklist)
-        if blacklisted:
-            return
-        current_time = discord.utils.utcnow()
-        level_collection = await self.database.get_guild_collection(message.guild.id, self.database.level)
-        entry = await level_collection.find_one({USER_ID: message.author.id})
-        xp = random.randint(15, 25)
+        current_time: datetime = discord.utils.utcnow()
+        level_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(message.guild.id, self.database.level)
+        entry: Any = await level_collection.find_one({USER_ID: message.author.id})
+        xp: int = random.randint(15, 25)
         if not entry:
-            xp_for_next_level = await self.determine_cumulative_xp(1)
+            xp_for_next_level: int = await self.determine_cumulative_xp(1)
             entry = {
                 USER_ID: message.author.id,
                 LEVEL: 0,
@@ -294,23 +279,20 @@ class Level(commands.Cog):
             }
             level_collection.insert_one(entry)
         else:
-            entry_date = None if not entry[LAST_MESSAGE] else pytz.timezone("UTC").localize(entry[LAST_MESSAGE])
+            entry_date: datetime = None if not entry[LAST_MESSAGE] else pytz.timezone("UTC").localize(entry[LAST_MESSAGE])
             if not entry_date or (current_time - entry_date) >= timedelta(seconds=60):
-                total_xp = entry[TOTAL_XP] + xp
+                total_xp: int = entry[TOTAL_XP] + xp
                 if xp >= entry[XP_FOR_NEXT_LEVEL]:
-                    print("Level up!")
-                    new_level = entry[LEVEL] + 1
-                    xp_at_level = total_xp - await self.determine_cumulative_xp(new_level)
+                    new_level: int = entry[LEVEL] + 1
+                    xp_at_level: int = total_xp - await self.determine_cumulative_xp(new_level)
                     xp_for_next_level = await self.determine_cumulative_xp(new_level+1) - total_xp
                     if not await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.blocked_messages):
-                        award_message = await self.award_message(message.guild, new_level)
+                        award_message: str = await self.award_message(message.guild, new_level)
                         if award_message:
                             award_message = award_message.replace("{lvl}", str(new_level))
                             award_message = award_message.replace("{mention}", message.author.mention)
                             await message.channel.send(award_message)
-                    else:
-                        print("Cannot give message")
-                    role = await self.award_role(message.guild, new_level)
+                    role: discord.Role = await self.award_role(message.guild, new_level)
                     if role:
                         await message.author.add_roles(role)
                 else:
@@ -319,6 +301,6 @@ class Level(commands.Cog):
                     xp_for_next_level = await self.determine_cumulative_xp(new_level+1) - total_xp
                 await level_collection.update_one({USER_ID: message.author.id},{"$set": {LEVEL: new_level,TOTAL_XP: total_xp,XP_AT_LEVEL: xp_at_level,XP_FOR_NEXT_LEVEL: xp_for_next_level,LAST_MESSAGE: current_time}})
 
-async def setup(bot: commands.Bot): 
+async def setup(bot: commands.Bot) -> None: 
     """Sets up the Level Cog"""
     await bot.add_cog(Level(bot))

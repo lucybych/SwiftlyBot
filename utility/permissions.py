@@ -1,6 +1,6 @@
 import discord
 
-cleaned_up_perm = {
+cleaned_up_perm: dict[str, str] = {
     "view_channels": "View Channels",
     "manage_channels": "Manage Channels",
     "manage_roles": "Manage Roles",
@@ -54,29 +54,25 @@ cleaned_up_perm = {
     "manage_permissions": "Manage Permissions",
 }
 
-async def channel_role_overrides(overwrite: discord.PermissionOverwrite):
+async def channel_role_overrides(overwrite: discord.PermissionOverwrite) -> tuple[list[str], list[str]]:
     """Grabs the list of overwrites and determines which permissions are allowed and denied, and returns the cleaned up version of those permissions"""
-    allowed_perms = []
-    denied_perms = []
+    allowed_perms: list[str] = []
+    denied_perms: list[str] = []
     if not overwrite.is_empty():
         allow, deny = overwrite.pair()
         for perm, value in iter(allow):
             if value:
-                perm_s = cleaned_up_perm.get(perm, "DEFAULT")
-                if perm_s == "DEFAULT":
-                    print(perm)
+                perm_s: str = cleaned_up_perm.get(perm, "DEFAULT")
                 allowed_perms.append(perm_s)
         for perm, value in iter(deny):
             if value:
                 perm_s = cleaned_up_perm.get(perm, "DEFAULT")
-                if perm_s == "DEFAULT":
-                    print(perm)
                 denied_perms.append(perm_s)
     return allowed_perms, denied_perms
 
-async def role_permissions(role: discord.Role):
+async def role_permissions(role: discord.Role) -> list[str]:
     """Grabs the list of permissions that a role has, and returns a list with the cleaned up version of those permissions"""
-    permissions_list = []
+    permissions_list: list[str] = []
     for perm, value in iter(role.permissions):
         if value:
             permissions_list.append(cleaned_up_perm.get(perm, perm).lower())

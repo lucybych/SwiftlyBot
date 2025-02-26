@@ -1,6 +1,8 @@
 from datetime import timedelta
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorDatabase
+from pymongo.results import UpdateResult
+from typing import Any, Union
 import discord
 import os
 
@@ -16,12 +18,12 @@ class Database:
             cls._instance.__initialized = False
         return cls._instance
 
-    def __init__(self, bot):
+    def __init__(self, bot) -> None:
         """Initializes the Database by setting the bot, connecting to the MongoDB database, and initializing the default collection names and configuration values"""
         if not self.__initialized:
             self.__initialized = True
             self.bot = bot
-            mongo_url = os.getenv("MONGODB_URI")
+            mongo_url: str = os.getenv("MONGODB_URI")
             self.mongo_client = AsyncIOMotorClient(mongo_url)
             self.automod = "automod"
             self.config = "config"
@@ -71,7 +73,7 @@ class Database:
             self.join_message = "join_message"
             self.leave_message = "leave_message"
             self.ban_message = "ban_message"
-            self.default_config = {
+            self.default_config: dict[str, Any] = {
                 self.bad_links: [],
                 self.bad_words: [],
                 self.time_limit: "0s",
@@ -109,69 +111,65 @@ class Database:
                 self.leave_message: "",
                 self.ban_message: "",
             }
-            self.collections_other = [self.id, self.voicelink, self.config, self.starboard, self.roles, self.reminders, self.moderation, self.quarantine, self.level, self.giveaway, self.automod]
+            self.collections_other: list[str] = [self.id, self.voicelink, self.config, self.starboard, self.roles, self.reminders, self.moderation, self.quarantine, self.level, self.giveaway, self.automod]
 
-    async def get_guild_database(self, guild_id): 
+    async def get_guild_database(self, guild_id) -> AsyncIOMotorDatabase: 
         """Grabs the database associated with the given guild ID"""
         return self.mongo_client[str(guild_id)] 
     
-    async def get_guild_collection(self, guild_id: int, collection_name: str):
+    async def get_guild_collection(self, guild_id: int, collection_name: str)-> AsyncIOMotorCollection:
         """Grabs the collection for the given guild ID and name"""
-        guild_db = await self.get_guild_database(guild_id)
+        guild_db: AsyncIOMotorDatabase = await self.get_guild_database(guild_id)
         return guild_db[collection_name]
     
-    async def get_config(self, guild_id, type):
+    async def get_config(self, guild_id, type) -> Any:
         """Grabs the configuration type for a given server"""
-        config = await self.get_guild_collection(guild_id, "config")
-        item = await config.find_one({})
+        config: AsyncIOMotorCollection = await self.get_guild_collection(guild_id, "config")
+        item: Any = await config.find_one({})
         if item:
             return item.get(f"{type}", None)
         return None
     
-    async def update_config(self, guild_id, update):
+    async def update_config(self, guild_id, update) -> UpdateResult:
         """Updates the configuration type for a given server"""
-        config = await self.get_guild_collection(guild_id, "config")
+        config: AsyncIOMotorCollection = await self.get_guild_collection(guild_id, "config")
         return await config.update_one({}, update)
 
-    async def get_next_id(self, guild_id):
+    async def get_next_id(self, guild_id) -> int:
         """Grabs the next ID for moderation cases"""
-        id_collection = await self.get_guild_collection(guild_id, "id")
-        id_doc = await id_collection.find_one({})
-        current_value = id_doc.get('value', 0) if id_doc else 0
+        id_collection: AsyncIOMotorCollection = await self.get_guild_collection(guild_id, "id")
+        id_doc: Any = await id_collection.find_one({})
+        current_value: int = id_doc.get('value', 0) if id_doc else 0
         await id_collection.update_one({}, {"$set": {"value": current_value + 1}}, upsert=True)
         return current_value
     
-    async def setup_default_config(self, guild_id):
+    async def setup_default_config(self, guild_id) -> None:
         """Sets up default configuration for a new or existing guild."""
-        guild_db = await self.get_guild_database(guild_id)
-        existing_collections = await guild_db.list_collection_names()
+        guild_db: AsyncIOMotorDatabase = await self.get_guild_database(guild_id)
+        existing_collections: list[str] = await guild_db.list_collection_names()
         for item in self.collections_other:
             if item not in existing_collections:
                 await guild_db.create_collection(item)
                 if item == "id":
-                    doc = {"value": 0}
-                    id_collection = await self.get_guild_collection(guild_id, "id")
+                    doc: dict[str, int] = {"value": 0}
+                    id_collection: AsyncIOMotorCollection = await self.get_guild_collection(guild_id, "id")
                     await id_collection.insert_one(doc)
-        config_collection = await self.get_guild_collection(guild_id, "config")
+        config_collection: AsyncIOMotorCollection = await self.get_guild_collection(guild_id, "config")
         for key, value in self.default_config.items():
-            await config_collection.update_one(
-                {}, 
-                {"$setOnInsert": {key: value}},
-                upsert=True
-            )
+            await config_collection.update_one({}, {"$setOnInsert": {key: value}}, upsert=True)
 
 async def parse_time_string(time_str: str) -> timedelta:
         """Parses a time string to return a valid timedelta"""
         try:
             time_str = time_str.lower()
-            time_parts = {"y": 31536000, "mo": 2592000, "w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
+            time_parts: dict[str, int] = {"y": 31536000, "mo": 2592000, "w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
             time_str = time_str.lower()
             total_seconds = 0
             for part in time_str.split():
                 num = int(part[:-1])
                 if num < 0:
                     return None
-                unit = part[-1]
+                unit: str = part[-1]
                 if unit not in time_parts:
                     return None
                 total_seconds += num * time_parts[unit]
@@ -182,11 +180,11 @@ async def parse_time_string(time_str: str) -> timedelta:
 async def expand_time_string(time_str: str) -> str:
     """Expands a time string into a proper sentence"""
     time_str = time_str.lower()
-    time_parts = {"y": "years", "mo": "months", "w": "weeks", "d": "days", "h": "hours", "m": "minutes", "s": "seconds"}
-    words = ""
+    time_parts: dict[str, str] = {"y": "years", "mo": "months", "w": "weeks", "d": "days", "h": "hours", "m": "minutes", "s": "seconds"}
+    words: str = ""
     for part in time_str.split():
-        num = part[:-1]
-        unit = part[-1]
+        num: str = part[:-1]
+        unit: str = part[-1]
         if unit not in time_parts:
             return None
         words += str(num) + " " + time_parts[unit]
@@ -196,7 +194,7 @@ async def expand_time_string(time_str: str) -> str:
         return words[:-1]
     return words
 
-async def ordinal(n):
+async def ordinal(n) -> str:
     """Converts a number into an ordinal that can be used in sentences"""
     if 10 <= n % 100 <= 13:
         return f"{n}th"
@@ -209,25 +207,19 @@ async def ordinal(n):
     else:
         return f"{n}th"
     
-async def get_channel(channel: str, guild: discord.Guild):
+async def get_channel(channel: str, guild: discord.Guild) -> discord.abc.GuildChannel | discord.Thread:
     """Gets a Discord channel based on a string"""
     if channel.startswith("<@"):
         return None
-    if channel.startswith("<#"):
-        c_id = int(channel[2:-1])
-    else:
-        c_id = int(channel)
-    channel = discord.utils.get(guild.channels, id=c_id)
+    c_id: int = int(channel[2:-1]) if channel.startswith("<#") else int(channel)
+    channel: discord.abc.GuildChannel | discord.Thread = discord.utils.get(guild.channels, id=c_id)
     return channel
 
-async def get_user(user: str, guild: discord.Guild):
+async def get_user(user: str, guild: discord.Guild) -> Union[discord.User, discord.Member]:
     """Gets a Discord user based on a string"""
     if user.startswith("<#"):
         return None
-    if user.startswith("<@"):
-        u_id = int(user[2:-1])
-    else:
-        u_id = int(user)
-    user = discord.utils.get(guild.members, id=u_id)
+    u_id: int = int(user[2:-1]) if user.startswith("<@") else int(user)
+    user: Union[discord.User, discord.Member] = discord.utils.get(guild.members, id=u_id)
     return user
 

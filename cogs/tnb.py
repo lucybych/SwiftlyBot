@@ -144,9 +144,8 @@ class TNB(commands.Cog):
     @commands.command()
     async def tnb(self, ctx: commands.Context):
         """Easy access to the permanent server invite for TNB."""
-        if ctx.guild.id != tnb_server_id:
-            return
-        await ctx.send("Wanna invite your friends to The Nerd Brigade? Here's our perma-invite!: https://discord.gg/XBqnnvA6tz")
+        if ctx.guild.id == tnb_server_id:
+            await ctx.send("Wanna invite your friends to The Nerd Brigade? Here's our perma-invite!: https://discord.gg/XBqnnvA6tz")
     @tnb.error
     async def on_tnb_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):

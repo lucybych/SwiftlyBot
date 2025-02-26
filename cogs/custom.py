@@ -7,80 +7,112 @@ import random
 import re
 
 DEFAULT_NICK = "Request New Nickname"
+ROLE_TRACK_FILE = "created_roles.txt"
+ROLE_TRACK_FILE_PRIV = "created_roles_priv.txt"
 
-blacklist_roles = [385963065469829120,845424391810580480,385965306696433668,385965575773618190,385985214796791808,385985247613026305,584478303818219536,619264009903800359,591349014889234531,619273032053162015,607328447689261098]
-blacklist_roles_2 = [385963065469829120,845424391810580480,385965306696433668,385965575773618190]
-blacklist_roles_3 = [385975834701463552,385975936585039883,385975983632809986,403294886155255823,559533095368523797,559533163215585290,559533193661906956,385974149018812416,743588174357332048,385974090839752704]
+blacklist_roles: List[int] = [385963065469829120,845424391810580480,385965306696433668,385965575773618190,385985214796791808,385985247613026305,584478303818219536,619264009903800359,591349014889234531,619273032053162015,607328447689261098]
+blacklist_roles_2: List[int] = [385963065469829120,845424391810580480,385965306696433668,385965575773618190]
+blacklist_roles_3: List[int] = [385975834701463552,385975936585039883,385975983632809986,403294886155255823,559533095368523797,559533163215585290,559533193661906956,385974149018812416,743588174357332048,385974090839752704]
 emd_server_id = 385956732888678402
-emd_level_roles = [385976059406843904, 385975834701463552, 385975936585039883, 385975983632809986, 403294886155255823, 559533095368523797, 559533163215585290, 559533193661906956]
+emd_level_roles: List[int] = [385976059406843904, 385975834701463552, 385975936585039883, 385975983632809986, 403294886155255823, 559533095368523797, 559533163215585290, 559533193661906956]
 emd_mod_chat_id = 385966411165728800
 emd_mod_log_id = 385973126623789076
 mute_role_id = 385978553935593472
 self_intros_id = 385974149018812416
 self_intros_id = 1336837177484771339
-shame_images = ["https://i.imgur.com/Yca8mcX.png","https://i.imgur.com/SWPLesj.png"]
-sl_images = ["https://i.imgur.com/vPOPWTo.png", "https://i.imgur.com/XYxjdWR.png", "https://i.imgur.com/k7wz69v.png", "https://i.imgur.com/OhWEiQF.png", "https://i.imgur.com/pOV7mRh.png", "https://i.imgur.com/dZKhFsE.png", "https://i.imgur.com/gl7Rbh6.png", "https://i.imgur.com/dHSGuBl.png", "https://i.imgur.com/lGnVMuv.png", "https://i.imgur.com/FuYokju.png", "https://i.imgur.com/6rbamK5.png", "https://i.imgur.com/N4b0SVB.png", "https://i.imgur.com/45R2ISm.png", "https://i.imgur.com/iZhOBJq.png", "https://i.imgur.com/KgHu3bm.png", "https://i.imgur.com/vSmFbYz.png", "https://i.imgur.com/Ukhb3xZ.png", "https://i.imgur.com/TyQozmx.png", "https://i.imgur.com/1vqPe7Y.png", "https://i.imgur.com/cUVxxW9.png", "https://i.imgur.com/8q3Ifd5.png"]
-emd_staff_roles = [385965575773618190,385965306696433668,385979606194454538]
+shame_images: List[str] = ["https://i.imgur.com/Yca8mcX.png","https://i.imgur.com/SWPLesj.png"]
+sl_images: List[str] = ["https://i.imgur.com/vPOPWTo.png", "https://i.imgur.com/XYxjdWR.png", "https://i.imgur.com/k7wz69v.png", "https://i.imgur.com/OhWEiQF.png", "https://i.imgur.com/pOV7mRh.png", "https://i.imgur.com/dZKhFsE.png", "https://i.imgur.com/gl7Rbh6.png", "https://i.imgur.com/dHSGuBl.png", "https://i.imgur.com/lGnVMuv.png", "https://i.imgur.com/FuYokju.png", "https://i.imgur.com/6rbamK5.png", "https://i.imgur.com/N4b0SVB.png", "https://i.imgur.com/45R2ISm.png", "https://i.imgur.com/iZhOBJq.png", "https://i.imgur.com/KgHu3bm.png", "https://i.imgur.com/vSmFbYz.png", "https://i.imgur.com/Ukhb3xZ.png", "https://i.imgur.com/TyQozmx.png", "https://i.imgur.com/1vqPe7Y.png", "https://i.imgur.com/cUVxxW9.png", "https://i.imgur.com/8q3Ifd5.png"]
+emd_staff_roles: List[int] = [385965575773618190,385965306696433668,385979606194454538]
 
 tmc_mod_chat_id = 1142605344594477067
 no_level_id = 1146135827219492984
-#tmc_staff_roles = [1142608956024438885, 1142609047598661674, 1146872239715786752]
-tmc_staff_roles = [1337923425448104057]
-#tmc_server_id = 1142604515791618108
-tmc_server_id = 1337921780911702016
-tmc_level_roles = [1142609181325660280, 1142609162128343050, 1142609144650661958, 1142609128284508210, 1142609107916959815, 1142609080272302130]
-#tmc_mod_log_id = 1142605378216014024
-tmc_mod_log_id = 1337921780911702019
+tmc_staff_roles: List[int] = [1142608956024438885, 1142609047598661674, 1146872239715786752]
+tmc_server_id = 1142604515791618108
+tmc_level_roles: List[int] = [1142609181325660280, 1142609162128343050, 1142609144650661958, 1142609128284508210, 1142609107916959815, 1142609080272302130]
+tmc_mod_log_id = 1142605378216014024
+
+tmc_custom_color_role = 1142609941463568484
+tmc_allowed_custom_colors: List[int] = [1146872239715786752, 1142608956024438885, 1142609047598661674, 1142609080272302130]
+
+private_custom_color_role = 1338320730827391088
+private_server_id = 1014693061458141304
 
 class Custom(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """Initializes the Custom module"""
-        self.bot = bot
+        self.bot: commands.Bot = bot
+    
+    async def add_user_to_file(self, guild_id: int, user_id: int) -> None:
+        """Adds a user ID to the role tracking file"""
+        if guild_id == tmc_server_id:
+            with open(ROLE_TRACK_FILE, "a") as file:
+                file.write(f"{user_id}\n")
+        elif guild_id == private_server_id:
+            with open(ROLE_TRACK_FILE_PRIV, "a") as file:
+                file.write(f"{user_id}\n")
+    
+    async def has_created_role(self, guild_id: int, user_id: int) -> bool:
+        """Checks if the user ID is in the role tracking file"""
+        try:
+            if guild_id == tmc_server_id:
+                with open(ROLE_TRACK_FILE, "r") as file:
+                    return str(user_id) in file.read().splitlines()
+            elif guild_id == private_server_id:
+                with open(ROLE_TRACK_FILE_PRIV, "r") as file:
+                    return str(user_id) in file.read().splitlines()
+        except FileNotFoundError:
+            return False
     
     async def has_link(self, content: str) -> bool:
         """Checks if a user's message in EMD contains a link, which would trigger the link prevention automod"""
-        url_pattern = re.compile(r'https?://(?:www\.)?\S+|www\.\S+')
+        url_pattern: re.Pattern[str] = re.compile(r'https?://(?:www\.)?\S+|www\.\S+')
         return bool(url_pattern.search(content))
 
     async def is_valid_nickname(self, nickname: str) -> bool:
         """Checks if a user's name/nickname in EMD has 3 valid alphanumeric characters"""
-        if not nickname:
-            return False
-        return bool(re.search(r'[a-zA-Z0-9]{3}', nickname))
+        return False if not nickname else bool(re.search(r'[a-zA-Z0-9]{3}', nickname))
+    
+    async def is_tmc(self):
+        async def predicate(ctx: commands.Context) -> bool:
+            return ctx.guild.id == tmc_server_id
+        return commands.check(predicate)
+    
+    async def is_emd(self):
+        async def predicate(ctx: commands.Context) -> bool:
+            return ctx.guild.id == emd_server_id
+        return commands.check(predicate)
+    
+    async def is_valid_server(self):
+        async def predicate(ctx: commands.Context) -> bool:
+            return ctx.guild.id == emd_server_id or ctx.guild.id == tmc_server_id
+        return commands.check(predicate)
 
-    async def staff_check(self, ctx: commands.Context) -> bool:
+    async def staff_check(self) -> bool:
         """Check if the user has staff roles."""
-        if ctx.guild.id == emd_server_id:
-            is_staff = await has_roles(ctx.author, emd_staff_roles)
+        async def predicate(ctx: commands.Context) -> bool:
+            if ctx.guild.id == emd_server_id:
+                is_staff: bool = await has_roles(ctx.author, emd_staff_roles)
+            elif ctx.guild.id == tmc_server_id:
+                is_staff = await has_roles(ctx.author, tmc_server_id)
+            else:
+                return False
             if not is_staff:
                 await ctx.send("You need to be staff to use this command, to help avoid spam.")
             return is_staff
-        elif ctx.guild.id == tmc_server_id:
-            is_staff = await has_roles(ctx.author, tmc_staff_roles)
-            if not is_staff:
-                await ctx.send("You need to be staff to use this command, to help avoid spam.")
-            return is_staff
-        return False
+        return commands.check(predicate)
     
     @commands.command()
-    async def anchor(self, ctx: commands.Context):
-        """For EMD staff to get pinged in staff chat"""
-        if ctx.guild.id == emd_server_id:
-            if not await has_roles(ctx.author, emd_staff_roles):
-                raise commands.MissingPermissions(["No staff roles"])
-            channel = ctx.guild.get_channel(emd_mod_chat_id)
-            if channel:
-                await channel.send(f"Here is your ping anchor, {ctx.author.mention}! ⚓")
-            else:
-                raise discord.InvalidData
-        elif ctx.guild.id == tmc_server_id:
-            if not await has_roles(ctx.author, tmc_staff_roles):
-                raise commands.MissingPermissions(["No staff roles"])
-            channel = ctx.guild.get_channel(tmc_mod_chat_id)
-            if channel:
-                await channel.send(f"Here is your ping anchor, {ctx.author.mention}! ⚓")
-            else:
-                raise discord.InvalidData
+    @is_valid_server()
+    async def anchor(self, ctx: commands.Context) -> None:
+        """For EMD/TMC staff to get pinged in staff chat"""
+        roles: List[int] = emd_staff_roles if ctx.guild.id == emd_server_id else tmc_staff_roles
+        channel: discord.abc.GuildChannel | discord.Thread = ctx.guild.get_channel(emd_mod_chat_id) if ctx.guild.id == emd_server_id else ctx.guild.get_channel(tmc_mod_chat_id)
+        if not await has_roles(ctx.author, roles):
+            raise commands.MissingPermissions(['No staff roles'])
+        if channel:
+            await channel.send(f"Here is your ping anchor, {ctx.author.mention}! ⚓")
+        else:
+            raise discord.InvalidData
     @anchor.error
     async def on_anchor_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -97,26 +129,19 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
     
     @commands.command()
-    async def anchovy(self, ctx: commands.Context):
-        """For TMC staff to get pinged in staff chat, but fishier 🐟"""
-        if ctx.guild.id == tmc_server_id:
-            if not await has_roles(ctx.author, tmc_staff_roles):
-                raise commands.MissingPermissions(["No staff roles"])
-            channel = self.bot.get_channel(tmc_mod_chat_id)
-            if channel:
-                await channel.send(f"Here is your ping anchovy, {ctx.author.mention}! 🐟")
-            else:
-                raise discord.InvalidData
-        elif ctx.guild.id == emd_server_id:
-            if not await has_roles(ctx.author, emd_staff_roles):
-                raise commands.MissingPermissions(["No staff roles"])
-            channel = ctx.guild.get_channel(emd_mod_chat_id)
-            if channel:
-                await channel.send(f"Here is your ping anchovy, {ctx.author.mention}! 🐟")
-            else:
-                raise discord.InvalidData
+    @is_valid_server()
+    async def anchovy(self, ctx: commands.Context) -> None:
+        """For EMD/TMC staff to get pinged in staff chat, but fishier 🐟"""
+        roles: List[int] = emd_staff_roles if ctx.guild.id == emd_server_id else tmc_staff_roles
+        channel: discord.abc.GuildChannel | discord.Thread = ctx.guild.get_channel(emd_mod_chat_id) if ctx.guild.id == emd_server_id else ctx.guild.get_channel(tmc_mod_chat_id)
+        if not await has_roles(ctx.author, roles):
+            raise commands.MissingPermissions(['No staff roles'])
+        if channel:
+            await channel.send(f"Here is your ping anchovy, {ctx.author.mention}! 🐟")
+        else:
+            raise discord.InvalidData
     @anchovy.error
-    async def on_anchovy_error(self, ctx: commands.Context, error):
+    async def on_anchovy_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments, just do m?anchovy.")
         elif isinstance(error, commands.MissingPermissions):
@@ -131,41 +156,26 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def betterdiscord(self, ctx: commands.Context):
-        """For EMD staff to use in regards to BetterDiscord or other modified Discord clients"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.blue(),title="\"Is using BetterDiscord or other modified clients banned?\"")
-                embed.add_field(name="",value="**__No, using BetterDiscord is not ban-worthy.__**"
-                                +"\n\nSome relevant bits from the [Discord TOS](https://discord.com/terms#:~:text=Third%20Party%20Software%20and%20Services.):"
-                                +"\n\n> *Our services may allow you to access apps, bots, or other products, features or services developed by third parties. It’s your choice whether to use these products [...]  While these third party services do need to follow all policies that apply to them [...] Discord is not responsible for products developed by third parties.*"
-                                +"\n\nIn summary, modified clients like BetterDiscord are okay; Discord is simply saying that they are not responsible if a modified client harms you.",inline=False)
-                embed.add_field(name="",value="\n\nIn general, Discord simply does not care about BetterDiscord; you will not be banned from here or Discord in general for using it properly. Moreover, Discord staff often use it, sometimes help support it or develop for it, and use it to see what features the userbase wants. Discord even approved them to get [a boosted member cap](https://support.discord.com/hc/en-us/articles/360052841734-Server-Member-Cap-Increases-), which obviously means Discord is okay with BetterDiscord as well."
-                                +"\n\n**__In short: using BetterDiscord as provided and in a proper way is 100% safe for you and your account.__**",inline=False)
-                embed.add_field(name="",value="\n\nFor those interested, you can also use the following links:"
-                                +"\n\n- [BetterDiscord's website](https://betterdiscord.app/)"
-                                +"\n- [BetterDiscord's Github](https://github.com/BetterDiscord/BetterDiscord)"
-                                +"\n- [BetterDiscord's support server](https://discord.gg/0Tmfo5ZbORCRqbAd)"
-                                +"\n- [Vencord](https://vencord.dev/download/) *(similar to BD, but less laggy - better, in the staff's opinion)*"
-                                +"\n- [Have a free meme](https://i.imgur.com/QalN0Zj.png)",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.blurple(), title="\"Is using BetterDiscord or other modified clients banned?\"")
-                embed.add_field(name="",value="**__No, using BetterDiscord is not ban-worthy.__**"
-                                +"\n\nSome relevant bits from the [Discord TOS:](https://discord.com/terms#:~:text=Third%20Party%20Software%20and%20Services.)"
-                                +"\n\n> Our services may allow you to access apps, bots, or other products, features or services developed by third parties. It’s your choice whether to use these products [...] While these third party services do need to follow all policies that apply to them [...] Discord is not responsible for products developed by third parties."
-                                +"\n\nIn summary, modified clients like BetterDiscord are okay; Discord is simply saying that they are not responsible if a modified client harms you.",inline=False)
-                embed.add_field(name="",value="\n\nIn general, Discord simply does not care about BetterDiscord; you will not be banned from here or Discord in general for using it properly. Moreover, Discord staff often use it, sometimes help support it or develop for it, and use it to see what features the userbase wants. Discord even approved them to get a [boosted member cap](https://support.discord.com/hc/en-us/articles/360052841734-Server-Member-Cap-Increases-), which obviously means Discord is okay with BetterDiscord as well."
-                                +"\n\n**__In short: using BetterDiscord as provided and in a proper way is 100% safe for you and your account.__**",inline=False)
-                embed.add_field(name="",value="\n\nFor those interested, you can also use the following links:"
-                                +"\n\n* [BetterDiscord's website](https://betterdiscord.app/)"
-                                +"\n* [BetterDiscord's Github](https://github.com/BetterDiscord/BetterDiscord)"
-                                +"\n* [BetterDiscord's support server](https://discord.gg/0Tmfo5ZbORCRqbAd)"
-                                +"\n* [Vencord](https://vencord.dev/download/) (similar to BD, but less laggy - better, in Eev's opinion)"
-                                +"\n* [Have a free meme](https://i.imgur.com/QalN0Zj.png)",inline=False)
-                await ctx.send(embed=embed)
+    @is_valid_server()
+    @staff_check()
+    async def betterdiscord(self, ctx: commands.Context) -> None:
+        """For EMD/TMC staff to use in regards to BetterDiscord or other modified Discord clients"""
+        embed = discord.Embed(color=discord.Color.blue(),title="\"Is using BetterDiscord or other modified clients banned?\"")
+        embed.add_field(name="",value="**__No, using BetterDiscord is not ban-worthy.__**"
+                        +"\n\nSome relevant bits from the [Discord TOS:](https://discord.com/terms#:~:text=Third%20Party%20Software%20and%20Services.)"
+                        +"\n\n> *Our services may allow you to access apps, bots, or other products, features or services developed by third parties. It’s your choice whether to use these products [...]  While these third party services do need to follow all policies that apply to them [...] Discord is not responsible for products developed by third parties.*"
+                        +"\n\nIn summary, modified clients like BetterDiscord are okay; Discord is simply saying that they are not responsible if a modified client harms you.",inline=False)
+        embed.add_field(name="",value="\n\nIn general, Discord simply does not care about BetterDiscord; you will not be banned from here or Discord in general for using it properly. Moreover, Discord staff often use it, sometimes help support it or develop for it, and use it to see what features the userbase wants. Discord even approved them to get [a boosted member cap](https://support.discord.com/hc/en-us/articles/360052841734-Server-Member-Cap-Increases-), which obviously means Discord is okay with BetterDiscord as well."
+                        +"\n\n**__In short: using BetterDiscord as provided and in a proper way is 100% safe for you and your account.__**",inline=False)
+        embed.add_field(name="",value="\n\nFor those interested, you can also use the following links:"
+                        +"\n\n- [BetterDiscord's website](https://betterdiscord.app/)"
+                        +"\n- [BetterDiscord's Github](https://github.com/BetterDiscord/BetterDiscord)"
+                        +"\n- [BetterDiscord's support server](https://discord.gg/0Tmfo5ZbORCRqbAd)"
+                        +"\n- [Vencord](https://vencord.dev/download/) *(similar to BD, but less laggy - better, in the staff's opinion)*"
+                        +"\n- [Have a free meme](https://i.imgur.com/QalN0Zj.png)",inline=False)
+        await ctx.send(embed=embed)
     @betterdiscord.error
-    async def on_betterdiscord_error(self, ctx: commands.Context, error):
+    async def on_betterdiscord_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments, just do m?betterdiscord.")
         elif isinstance(error, discord.HTTPException):
@@ -176,25 +186,62 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def cheese(self, ctx: commands.Context):
-        """Sends a picture of cheese, because get cheesed"""
+    async def ccolor(self, ctx: commands.Context, name: str, color: discord.Color):
         if ctx.guild.id == tmc_server_id:
-            await ctx.send("https://i.imgur.com/8EUsHqQ.png")
+            valid_roles: List[int] = [role.id for role in ctx.author.roles if role.id in tmc_allowed_custom_colors]
+            if not valid_roles:
+                return await ctx.send("You have not met the requirements for a custom color. You must be at least Level **50** or be a member of staff.")
+            if await self.has_created_role(ctx.guild.id, ctx.author.id):
+                return await ctx.send(f"{ctx.author.mention}, you have already created a custom color!")
+            guild: discord.Guild = ctx.guild
+            position_role: discord.Role = guild.get_role(tmc_custom_color_role)
+            new_role: discord.Role = await guild.create_role(name=name, color=color, reason=f"Custom role for {ctx.author}")
+            await ctx.author.add_roles(new_role)
+            if position_role:
+                try:
+                    await new_role.edit(position=position_role.position - 1)
+                    await new_role.edit(position=position_role.position - 1)
+                except discord.Forbidden:
+                    return await ctx.send("I don't have permission to adjust role positions.")
+            await self.add_user_to_file(ctx.guild.id, ctx.author.id)
+            await ctx.send(f"{ctx.author.mention}, your role `{name}` has been created and assigned to you!")
+        elif ctx.guild.id == private_server_id:
+            if await self.has_created_role(ctx.guild.id, ctx.author.id):
+                return await ctx.send(f"{ctx.author.mention}, you have already created a custom color!")
+            guild = ctx.guild
+            position_role = guild.get_role(private_custom_color_role)
+            new_role = await guild.create_role(name=name, color=color, reason=f"Custom role for {ctx.author}")
+            await ctx.author.add_roles(new_role)
+            if position_role:
+                try:
+                    await new_role.edit(position=position_role.position - 1)
+                    await new_role.edit(position=position_role.position - 1)
+                except discord.Forbidden:
+                    return await ctx.send("I don't have permission to adjust role positions.")
+            await self.add_user_to_file(ctx.guild.id, ctx.author.id)
+            await ctx.send(f"{ctx.author.mention}, your role `{name}` has been created and assigned to you!")
+    
+    @commands.command()
+    @is_tmc()
+    async def cheese(self, ctx: commands.Context) -> None:
+        """Sends a picture of cheese, because get cheesed"""
+        await ctx.send("https://i.imgur.com/8EUsHqQ.png")
     
     @commands.command(aliases=['dead'])
-    async def deadchat(self, ctx: commands.Context):
+    @is_emd()
+    @staff_check()
+    async def deadchat(self, ctx: commands.Context) -> None:
         """For EMD staff to use when someone mentions if/when a chat is inactive"""
-        if await self.staff_check(ctx) and ctx.guild.id == emd_server_id:
-            embed = discord.Embed(color=discord.Color.red(),title="On the matter of saying \"dead chat\" and such...")
-            embed.add_field(name="",value="While it has become somewhat of a meme on Discord, we would like to ask you refrain from using the \"dead chat lol\" meme here. This is because..."
-                            +"\n\n- ...it doesn't suddenly make the chat more active."
-                            +"\n- ...it often actually makes chat even more dead."
-                            +"\n- ...just because the chat is slower than you like, doesn't mean that it's really dead."
-                            +"\n- ...frankly, it just gets on people's nerves and contributes nothing of value conversationally."
-                            +"\n\nSo, please refrain from memeing about the chat's activity level here. At times the chat will be blazing fast, and at others slow and chill. And nothing is wrong with that, even if it doesn't quite suit you.",inline=False)
-            await ctx.send(embed=embed)
+        embed = discord.Embed(color=discord.Color.red(),title="On the matter of saying \"dead chat\" and such...")
+        embed.add_field(name="",value="While it has become somewhat of a meme on Discord, we would like to ask you refrain from using the \"dead chat lol\" meme here. This is because..."
+                        +"\n\n- ...it doesn't suddenly make the chat more active."
+                        +"\n- ...it often actually makes chat even more dead."
+                        +"\n- ...just because the chat is slower than you like, doesn't mean that it's really dead."
+                        +"\n- ...frankly, it just gets on people's nerves and contributes nothing of value conversationally."
+                        +"\n\nSo, please refrain from memeing about the chat's activity level here. At times the chat will be blazing fast, and at others slow and chill. And nothing is wrong with that, even if it doesn't quite suit you.",inline=False)
+        await ctx.send(embed=embed)
     @deadchat.error
-    async def on_deadchat_error(self, ctx: commands.Context, error):
+    async def on_deadchat_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments, just do m?deadchat.")
         elif isinstance(error, discord.HTTPException):
@@ -205,17 +252,17 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def eee(self, ctx: commands.Context):
+    @is_emd()
+    async def eee(self, ctx: commands.Context) -> None:
         """Posts an invite to the spinoff server Eevee's Emote Encyclopedia"""
-        if ctx.guild.id == emd_server_id:
-            await ctx.send("Want more emotes? Check out our emote-focused spinoff server, Eevee's Emote Encyclopedia, which features over 200 emote servers, including:"
-                        +"\n\n- servers for portraits from PMD titles"
-                        +"\n- emotes of various Pokemon series assets"
-                        +"\n- servers for games, streamers, and more, popular with EMD members for emotes"
-                        +"\n- EMD's overflow emote servers, which can be found in #extra_emd_emotes!"
-                        +"\n\nhttps://discord.gg/CzRP6pH")
+        await ctx.send("Want more emotes? Check out our emote-focused spinoff server, Eevee's Emote Encyclopedia, which features over 200 emote servers, including:"
+                    +"\n\n- servers for portraits from PMD titles"
+                    +"\n- emotes of various Pokemon series assets"
+                    +"\n- servers for games, streamers, and more, popular with EMD members for emotes"
+                    +"\n- EMD's overflow emote servers, which can be found in #extra_emd_emotes!"
+                    +"\n\nhttps://discord.gg/CzRP6pH")
     @eee.error
-    async def on_eee_error(self, ctx: commands.Context, error):
+    async def on_eee_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments, just do m?eee.")
         elif isinstance(error, discord.HTTPException):
@@ -226,12 +273,12 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def emd(self, ctx: commands.Context):
+    @is_emd
+    async def emd(self, ctx: commands.Context) -> None:
         """Posts EMD's permanent server invite"""
-        if ctx.guild.id == emd_server_id:
-            await ctx.send("Want to invite your friends to Eevee's Mystery Dungeon? Here's a permanent link to the server!\n\nhttps://discord.gg/emd")
+        await ctx.send("Want to invite your friends to Eevee's Mystery Dungeon? Here's a permanent link to the server!\n\nhttps://discord.gg/emd")
     @emd.error
-    async def on_emd_error(self, ctx: commands.Context, error):
+    async def on_emd_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments, just do m?emd.")
         elif isinstance(error, discord.HTTPException):
@@ -242,16 +289,18 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def emotes(self, ctx: commands.Context):
+    @is_valid_server()
+    @staff_check()
+    async def emotes(self, ctx: commands.Context) -> None:
         """For EMD staff to use when someone asks about emotes"""
-        if await self.staff_check(ctx):
+        if ctx.guild.id == emd_server_id:
             embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why can't I use external emotes? I have Nitro!\"")
             embed.add_field(name="",value="EMD prevents the posting of external emotes until you hit **__Level 1__** in the server."
                             +"\n\nThe reason is because we don't want people posting inappropriate emotes and such to troll the server the second they join."
                             +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
     @emotes.error
-    async def on_emotes_error(self, ctx: commands.Context, error):
+    async def on_emotes_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments. Please only do m?emotes")
         elif isinstance(error, discord.HTTPException):
@@ -262,13 +311,13 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command(aliases=['rescue'])
-    async def ert(self, ctx: commands.Context):
+    @is_emd()
+    async def ert(self, ctx: commands.Context) -> None:
         """Posts an invite to the spinoff server Eevee's Rescue Team"""
-        if ctx.guild.id == emd_server_id:
-            await ctx.send("Need a rescue in a PMD game? Be sure to check out our spinoff server, Eevee's Rescue Team, to get some help!"
-                       +"\n\nhttps://discord.gg/E57gMQq")
+        await ctx.send("Need a rescue in a PMD game? Be sure to check out our spinoff server, Eevee's Rescue Team, to get some help!"
+                    +"\n\nhttps://discord.gg/E57gMQq")
     @ert.error
-    async def on_ert_error(self, ctx: commands.Context, error):
+    async def on_ert_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments. Please only do m?ert")
         elif isinstance(error, discord.HTTPException):
@@ -279,10 +328,9 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
+    @is_emd()
     async def introcl(self, ctx: commands.Context):
         """Goes through EMD's self-introductions channel and removes all intros from those who posted multiple or who have left the server"""
-        if ctx.guild.id != emd_server_id:
-            return
         if not await has_roles(ctx.author, emd_staff_roles):
             raise commands.MissingPermissions(["No staff roles"])
         intro_channel = ctx.guild.get_channel(self_intros_id)
@@ -332,21 +380,21 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
     
     @commands.command(aliases=['links'])
+    @is_valid_server()
+    @staff_check()
     async def link(self, ctx: commands.Context):
-        """For EMD staff to use when someone asks about posting/embedding links or attaching/posting files"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why can't I post files or links here?\"")
-                embed.add_field(name="",value="You cannot post files, links, images, videos, or embeds in this server until you reach **__Level 1.__** If you try to post a link anyways, your post will be auto-deleted by a bot; if you do this twice, you will be muted automatically. We apologize for this minor inconvenience, but it's a good measure to help prevent trolls; Level 1 does not take much time to reach."
-                                +"\n\nMoreover, while you will be able to post links at Level 1, you won't be able to post files or have links embed in <#385974351905685505> or <#596235298728312832> until you reach **__Level 70.__** This is done in order to prevent spam; <#385974292778713106> can be used in the meantime. *(Even then, for those above Level 70, we want media posted in the gens to be relevant, not random stuff.)*"
-                                +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why can't I post files or links here?\"")
-                embed.add_field(name="",value="You cannot post files, links, images, videos, or embeds in this server until you reach **__Level 1__**. If you try to post a link anyways, your post will be auto-deleted by a bot; if you do this twice, you will be muted automatically. We apologize for this minor inconvenience, but it's a good measure to help prevent trolls; Level 1 does not take much time to reach."
-                                +"\n\nMoreover, while you will be able to post links at Level 1, you won't be able to post files or have links embed in <#1142604517603561535> or <#1142606088148094988> until you reach **__Level 20__**. This is done in order to prevent spam; <#1142606134218334368> can be used in the meantime. *(Even then, for those above Level 20, we want media posted in the gens to be relevant, not random stuff.)*"
-                                +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/1142604515791618108/1142604517603561535/1260050727351488573).)*",inline=False)
-                await ctx.send(embed=embed)
+        """For EMD/TMC staff to use when someone asks about posting/embedding links or attaching/posting files"""
+        if ctx.guild.id == emd_server_id:
+            embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why can't I post files or links here?\"")
+            embed.add_field(name="",value="You cannot post files, links, images, videos, or embeds in this server until you reach **__Level 1.__** If you try to post a link anyways, your post will be auto-deleted by a bot; if you do this twice, you will be muted automatically. We apologize for this minor inconvenience, but it's a good measure to help prevent trolls; Level 1 does not take much time to reach."
+                            +"\n\nMoreover, while you will be able to post links at Level 1, you won't be able to post files or have links embed in <#385974351905685505> or <#596235298728312832> until you reach **__Level 70.__** This is done in order to prevent spam; <#385974292778713106> can be used in the meantime. *(Even then, for those above Level 70, we want media posted in the gens to be relevant, not random stuff.)*"
+                            +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
+        elif ctx.guild.id == tmc_server_id:
+            embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Why can't I post files or links here?\"")
+            embed.add_field(name="",value="You cannot post files, links, images, videos, or embeds in this server until you reach **__Level 1__**. If you try to post a link anyways, your post will be auto-deleted by a bot; if you do this twice, you will be muted automatically. We apologize for this minor inconvenience, but it's a good measure to help prevent trolls; Level 1 does not take much time to reach."
+                            +"\n\nMoreover, while you will be able to post links at Level 1, you won't be able to post files or have links embed in <#1142604517603561535> or <#1142606088148094988> until you reach **__Level 20__**. This is done in order to prevent spam; <#1142606134218334368> can be used in the meantime. *(Even then, for those above Level 20, we want media posted in the gens to be relevant, not random stuff.)*"
+                            +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/1142604515791618108/1142604517603561535/1260050727351488573).)*",inline=False)
+        await ctx.send(embed=embed)
     @link.error
     async def on_link_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -359,19 +407,19 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def lvlinfo(self, ctx: commands.Context):
-        """For EMD staff to use when someone asks about levels and the leveling system"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(),title="Level-Up System Information")
-                embed.add_field(name="",value="Some math on our EXP./level-up system may be found [here](https://i.imgur.com/lZ5Wq9b.png). *(This was originally designed for Mee6, but Carl-bot's mechanics are set to be identical.)*"
+        """For EMD/TMC staff to use when someone asks about levels and the leveling system"""
+        if ctx.guild.id == emd_server_id:
+            embed = discord.Embed(color=discord.Color.dark_blue(),title="Level-Up System Information")
+            embed.add_field(name="",value="Some math on our EXP./level-up system may be found [here](https://i.imgur.com/lZ5Wq9b.png). *(This was originally designed for Mee6, but Carl-bot's mechanics are set to be identical.)*"
                                 +"\n\nLevel-based perks can be found [here](https://discord.com/channels/385956732888678402/385972526590722048/1096633121958547588).",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.blue(), title="Level-Up System Information",url="https://i.imgur.com/EZD7abf.png")
-                embed.add_field(name="",value="Some math on our EXP./level-up system may be found [here](https://i.imgur.com/lZ5Wq9b.png). (This chart was originally for Mee6, but Carl-bot's mechanics are set to be identical.)"
-                                +"\n\nLevel-based perks can be found [here](https://discord.com/channels/1142604515791618108/1142604766610980945/1147014447966203954).",inline=False)
-                await ctx.send(embed=embed)
+        elif ctx.guild.id == tmc_server_id:
+            embed = discord.Embed(color=discord.Color.blue(), title="Level-Up System Information",url="https://i.imgur.com/EZD7abf.png")
+            embed.add_field(name="",value="Some math on our EXP./level-up system may be found [here](https://i.imgur.com/lZ5Wq9b.png). (This chart was originally for Mee6, but Carl-bot's mechanics are set to be identical.)"
+                            +"\n\nLevel-based perks can be found [here](https://discord.com/channels/1142604515791618108/1142604766610980945/1147014447966203954).",inline=False)
+        await ctx.send(embed=embed)
     @lvlinfo.error
     async def on_lvlinfo_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -384,14 +432,16 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def nick(self, ctx: commands.Context):
-        """For EMD staff to use when someone asks about changing their nickname"""
-        if await self.staff_check(ctx):
+        """For EMD/TMC staff to use when someone asks about changing their nickname"""
+        if ctx.guild.id == emd_server_id:
             embed = discord.Embed(color=discord.Color.dark_blue(),title="\"How do I change my nickname?\"")
             embed.add_field(name="",value="In order to help people get used to our rules on usernames/nicknames, you can't change your own nickname until you reach Level 10. If you want to change your name before then, you can ask a member of the staff to do it for you; just tell them what name you want in <#743588174357332048>!"
                             +"\n\nOur rules on nicknames can be found [here](https://discord.com/channels/385956732888678402/385972494429061131/782737583154397224)."
                             +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
     @nick.error
     async def on_nick_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -404,10 +454,9 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")      
 
     @commands.command()
+    @is_tmc()
     async def nolvl(self, ctx: commands.Context, members: commands.Greedy[discord.Member]):
         """For TMC staff to add the No Level role to users more conveniently/quickly"""
-        if ctx.guild.id != tmc_server_id:
-            return
         if not await has_roles(ctx.author, tmc_staff_roles):
             await ctx.send("You need to be staff to use this command.")
             return
@@ -417,20 +466,19 @@ class Custom(commands.Cog):
             await ctx.send(f"Added the **{no_lvl.name}** role to {member.mention}.")
 
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def nsfw(self, ctx: commands.Context):
         """For EMD staff to use when someone asks about NSFW and the associated channels"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
-                embed.add_field(name="",value="This server does have NSFW channels; however, they're not available until you hit Level 20. You'll have to contact a mod to confirm your age; we will let you in, if we think you should be in those channels. (We don't let in people who are known to be here just for the NSFW stuff, or people who have a tendency to make people feel creeped out or uncomfortable. That stuff falls very out of line with our server culture.)"
-                                +"\n\nOnce you've gotten the 18+ role from a mod, you'll be able to get the NSFW role from #age_restricted-channels."
-                                +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
-                embed.add_field(name="",value="This server does have NSFW channels; however, they're not available until you hit Level 20. You'll have to contact a mod to give a form of ID; we will let you in, if we think you should be in those channels. (We don't let in people who are known to be here just for the NSFW stuff, or people who have a tendency to make people feel creeped out or uncomfortable. That stuff falls very out of line with our server culture.)"
-                                +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/1142604515791618108/1142604766610980945/1146869599061672127).)*",inline=False)
-                await ctx.send(embed=embed)
+        if ctx.guild.id == emd_server_id:
+            embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
+            embed.add_field(name="",value="This server does have NSFW channels; however, they're not available until you hit Level 20. You'll have to contact a mod to confirm your age; we will let you in, if we think you should be in those channels. (We don't let in people who are known to be here just for the NSFW stuff, or people who have a tendency to make people feel creeped out or uncomfortable. That stuff falls very out of line with our server culture.)"
+                            +"\n\nOnce you've gotten the 18+ role from a mod, you'll be able to get the NSFW role from #age_restricted-channels."
+                            +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/385956732888678402/385972526590722048/725839644016640022).)*",inline=False)
+        elif ctx.guild.id == tmc_server_id:
+            embed = discord.Embed(color=discord.Color.dark_blue(), title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
+            embed.add_field(name="",value="This server does have NSFW channels; however, they're not available until you hit Level 20. You'll have to contact a mod to give a form of ID; we will let you in, if we think you should be in those channels. (We don't let in people who are known to be here just for the NSFW stuff, or people who have a tendency to make people feel creeped out or uncomfortable. That stuff falls very out of line with our server culture.)"
+                            +"\n\n*(Other level-based perks are described [here](https://discord.com/channels/1142604515791618108/1142604766610980945/1146869599061672127).)*",inline=False)
     @nsfw.error
     async def on_nsfw_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -443,15 +491,16 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def offserver(self, ctx: commands.Context):
         """For EMD staff to use when determining if a person off-server should be banned"""
-        if await self.staff_check(ctx):
-            embed = discord.Embed(color=discord.Color.dark_blue(),title="Roxy's criteria for off-server bans:")
-            embed.add_field(name="",value="*Evaluate the actual risk to the server and its members by the following criteria:*"
-                            +"\n\n(1) **Severity of the user's deeds** -- Is it something so extreme that we don't want even a chance of happening here?"
-                            +"\n\n(2) **Credibility of the source and the evidence presented** -- Do we know and trust the source of the information well enough to know they aren't lying, and is the evidence they have actually enough to back up the severity of their claims?"
-                            +"\n\n(3) **Potential of the user to actually cause issues here** -- Are they actually likely to end up here, and if so, are they likely to repeat their previous actions?",inline=False)
-            await ctx.send(embed=embed)
+        embed = discord.Embed(color=discord.Color.dark_blue(),title="Roxy's criteria for off-server bans:")
+        embed.add_field(name="",value="*Evaluate the actual risk to the server and its members by the following criteria:*"
+                        +"\n\n(1) **Severity of the user's deeds** -- Is it something so extreme that we don't want even a chance of happening here?"
+                        +"\n\n(2) **Credibility of the source and the evidence presented** -- Do we know and trust the source of the information well enough to know they aren't lying, and is the evidence they have actually enough to back up the severity of their claims?"
+                        +"\n\n(3) **Potential of the user to actually cause issues here** -- Are they actually likely to end up here, and if so, are they likely to repeat their previous actions?",inline=False)
+        await ctx.send(embed=embed)
     @offserver.error
     async def on_offserver_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -464,23 +513,16 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def openoriginal(self, ctx: commands.Context):
         """For EMD staff to use when someone asks about large/elongated images"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.dark_blue(), title="\"I can't read this long picture, it's too blurry.\"")
-                embed.add_field(name="",value="*(Often the situation looks like [this](https://i.imgur.com/BzmBvsY.png).)*"
-                                +"\n\nYou need to open the original file in your browser."
-                                +"\n\nOn desktop, click on the image, and then on the \"Open in Browser\" button below the image. ([Picture](https://i.imgur.com/QIaYzfX.png).)"
-                                +"\n\nOn mobile, tap the image, then the three dots in the top-right, and then on the \"Open in Browser\" option. ([Picture](https://i.imgur.com/76DBuEa.png).)",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.blue(), title="\"I can't read this long picture, it's too blurry.\"")
-                embed.add_field(name="",value="*(Often the situation looks like [this](https://i.imgur.com/BzmBvsY.png).)*"
-                                +"\n\nYou need to open the original file in your browser."
-                                +"\n\nOn desktop, click on the image, and then on the \"Open in Browser\" button below the image. [(Picture.)](https://i.imgur.com/QIaYzfX.png)"
-                                +"\n\nOn mobile, tap the image, then the three dots in the top-right, and then on the \"Open in Browser\" option. [(Picture.)](https://i.imgur.com/76DBuEa.png)",inline=False)
-                await ctx.send(embed=embed)
+        embed = discord.Embed(color=discord.Color.dark_blue(), title="\"I can't read this long picture, it's too blurry.\"")
+        embed.add_field(name="",value="*(Often the situation looks like [this](https://i.imgur.com/BzmBvsY.png).)*"
+                        +"\n\nYou need to open the original file in your browser."
+                        +"\n\nOn desktop, click on the image, and then on the \"Open in Browser\" button below the image. ([Picture](https://i.imgur.com/QIaYzfX.png).)"
+                        +"\n\nOn mobile, tap the image, then the three dots in the top-right, and then on the \"Open in Browser\" option. ([Picture](https://i.imgur.com/76DBuEa.png).)",inline=False)
+        await ctx.send(embed=embed)
     @openoriginal.error
     async def on_openoriginal_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -519,14 +561,16 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def reply(self, ctx: commands.Context):
-        """For EMD staff to use when someone asks about replying to other users"""
-        if await self.staff_check(ctx):
+        """For EMD/TMC staff to use when someone asks about replying to other users"""
+        if ctx.guild.id == emd_server_id:
             embed = discord.Embed(color=discord.Color.dark_blue(),title="Pings When Replying")
             embed.add_field(name="",value="**Replying is able to ping people.** When you opt to reply to someone, by default it pings them. You can turn this off by clicking/tapping the option in yellow [here](https://i.imgur.com/8OaumBw.png). You can tell when a reply has pinged someone based on whether there is an \"@\" in the quoted text ([example](https://i.imgur.com/QAtxS07.png))."
                             +"\n\nBy default, Discord sadly has the reply ping left \"ON\", i.e. by default your replies ping people unless turned off. If you have [BetterDiscord](https://betterdiscord.app/), a plugin to make the default be \"OFF\" is [here](https://cdn.discordapp.com/attachments/478310940975038482/1085072352636841995/NRM.plugin.js). Holding Shift as you click the button to start a reply also defaults it to being \"OFF\"."
                             +"\n\nPlease respect people's wishes to not be pinged. *(And those who do not want to be pinged, please include it in your username/nickname so we know.)*",inline=False)
-            await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
     @reply.error
     async def on_reply_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):
@@ -568,19 +612,14 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
+    @is_valid_server()
+    @staff_check()
     async def scam(self, ctx: commands.Context):
-        """For EMD staff to use when someone asks about scams and hacks on Discord"""
-        if await self.staff_check(ctx):
-            if ctx.guild.id == emd_server_id:
-                embed = discord.Embed(color=discord.Color.purple(),title="Recent Discord Scams & Hacking:")
-                embed.add_field(name="",value="A friend of the server put together a Google Doc describing some common Discord scams that have gone around or are currently going around, and some tips on how to protect yourself from them."
-                                +"\n\nYou can read her write-up at this link: <https://bit.ly/3fu5wIl>",inline=False)
-                await ctx.send(embed=embed)
-            elif ctx.guild.id == tmc_server_id:
-                embed = discord.Embed(color=discord.Color.purple(), title="Recent Discord Scams & Hacking:")
-                embed.add_field(name="",value="Eev put together a Google Doc describing some common Discord scams going around as of late that have compromised a number of accounts, and some tips on how to protect yourself from them."
-                                +"\n\nYou can read her write-up at this link: https://bit.ly/3fu5wIl",inline=False)
-                await ctx.send(embed=embed)
+        """For EMD/TMC staff to use when someone asks about scams and hacks on Discord"""
+        embed = discord.Embed(color=discord.Color.purple(),title="Recent Discord Scams & Hacking:")
+        embed.add_field(name="",value=f"{'A friend of the server' if ctx.guild.id == emd_server_id else 'Eev'} put together a Google Doc describing some common Discord scams that have gone around or are currently going around, and some tips on how to protect yourself from them."
+                        +"\n\nYou can read her write-up at this link: <https://bit.ly/3fu5wIl>",inline=False)
+        await ctx.send(embed=embed)
     @scam.error
     async def on_scam_error(self, ctx: commands.Context, error):
         if isinstance(error, commands.TooManyArguments):

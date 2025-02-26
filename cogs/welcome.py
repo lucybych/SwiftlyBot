@@ -4,9 +4,9 @@ from utility.guild import Database
 import discord
 
 class Welcome(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         """Initializes the Welcome module"""
-        self.bot = bot
+        self.bot: commands.Bot = bot
         self.database = Database(self.bot)
     
     def format_msg(self, text: str, member: discord.Member) -> str:
@@ -15,29 +15,29 @@ class Welcome(commands.Cog):
                       .replace("{server}", member.guild.name) \
                       .replace("{user(proper)}", member.name)
     
-    async def send_welcome_message(self, guild: discord.Guild, member: discord.Member, config_key: str):
+    async def send_welcome_message(self, guild: discord.Guild, member: discord.Member, type: str) -> None:
         """Fetches and sends a configured welcome message if available"""
-        welcome_channel = await find_channel(guild, self.database, self.database.welcome_channel)
-        text = await find_str(guild, self.database, config_key)
+        welcome_channel: discord.abc.GuildChannel | discord.Thread | None = await find_channel(guild, self.database, self.database.welcome_channel)
+        text: str = await find_str(guild, self.database, type)
         if welcome_channel and text:
             await welcome_channel.send(self.format_msg(text, member))
 
     @commands.Cog.listener()
-    async def on_member_ban(self, guild: discord.Guild, member: discord.Member):
+    async def on_member_ban(self, guild: discord.Guild, member: discord.Member) -> None:
         """Sends a message to the welcome channel if a user is banned"""
         if member in guild.members:
             await self.send_welcome_message(guild, member, self.database.ban_message)
     
     @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
+    async def on_member_join(self, member: discord.Member) -> None:
         """Sends a message to the welcome channel when a user joins"""
         await self.send_welcome_message(member.guild, member, self.database.join_message)
     
     @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
+    async def on_member_remove(self, member: discord.Member) -> None:
         """Sends a message to the welcome channel when a user leaves"""
         await self.send_welcome_message(member.guild, member, self.database.leave_message)
 
-async def setup(bot: commands.Bot): 
+async def setup(bot: commands.Bot) -> None: 
     """Sets up the Welcome Cog"""
     await bot.add_cog(Welcome(bot))
