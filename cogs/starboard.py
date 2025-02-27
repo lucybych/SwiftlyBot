@@ -102,7 +102,7 @@ class Starboard(commands.Cog):
         entry: Any = await starboard_collection.find_one({ORIGINAL_MESSAGE_ID: message.id})
         if entry:
             try:
-                starboard_message = await starboard_channel.fetch_message(entry[STARBOARD_MESSAGE_ID])
+                starboard_message: discord.Message = await starboard_channel.fetch_message(entry[STARBOARD_MESSAGE_ID])
                 await starboard_message.delete()
                 await starboard_collection.delete_one({STARBOARD_MESSAGE_ID: starboard_message.id})
             except Exception:

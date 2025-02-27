@@ -90,7 +90,7 @@ class Reminder(commands.Cog):
                     new_target_time: datetime = reminder[TARGET_TIME] + repeat_interval
                 await reminders_collection.update_one({MESSAGE_ID: reminder[MESSAGE_ID]}, {"$set": {TARGET_TIME: new_target_time}}) if reminder[REPEAT] else await reminders_collection.delete_one({MESSAGE_ID: reminder[MESSAGE_ID]})  
 
-    @commands.command()
+    @commands.group(invoke_without_command=True)
     async def remind(self, ctx: commands.Context, *, args: str) -> discord.Message | None:
         """Creates a reminder for the command user, with the arguments of the time to remind the user, dm/channel specification, reminder message, and interval time for repeating reminders"""
         time_format, dm_channel, message, interval = await self.parse_reminder_args(args)
@@ -114,14 +114,21 @@ class Reminder(commands.Cog):
     async def on_remind_error(self, ctx: commands.Context, error) -> None:
         await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
-    @commands.command()
+    @remind.command(name="clear", aliases=['rmall', 'removeall', 'rall'])
+    async def remindclear(self, ctx: commands.Context) -> None:
+        reminders_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.reminders)
+        result: DeleteResult = await reminders_collection.delete_many({USER_ID: ctx.author.id})
+        await ctx.send(f"Deleted {result.deleted_count} reminders for {ctx.author.mention}") if result.deleted_count > 0 else await ctx.send(f"{ctx.author.mention} you do not have any active reminders to clear out!")
+        return
+    
+    @remind.command(name="delete", aliases=['remove', 'rm', 'del'])
     async def reminddelete(self, ctx: commands.Context, reminder_id: int) -> None:
         """Deletes a reminder for the user with the given reminder ID"""
         reminders_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.reminders)
         result: DeleteResult = await reminders_collection.delete_one({MESSAGE_ID: reminder_id, USER_ID: ctx.author.id})
         await ctx.send("Reminder deleted successfully.") if result.deleted_count > 0 else await ctx.send("Could not find the reminder or you don't have permission to delete it.")
     @reminddelete.error
-    async def on_reminddelete_error(self, ctx: commands.Context, error):
+    async def on_reminddelete_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only include a message/reminder ID.")
         elif isinstance(error, commands.BadArgument):
@@ -129,7 +136,7 @@ class Reminder(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
-    @commands.command()
+    @remind.command(name="edit")
     async def remindedit(self, ctx: commands.Context, reminder_id: int, *, new_message: str) -> None:
         """Edits a reminder for the user with the given ID, if they created the reminder"""
         reminders_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.reminders)

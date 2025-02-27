@@ -775,8 +775,35 @@ class Config(commands.Cog):
             
 #---------------------------------------------------------------------------------------------------------------------------------------
 #Starboard configuration
-    @commands.command()
+    @commands.group(invoke_without_command=True)
     @commands.has_permissions(manage_guild=True)
+    async def starboard(self, ctx: commands.Context) -> None:
+        """Displays the settings for the Starboard module (Starboard channel, blacklist, threshold, default emote)."""
+        starboard_channel: discord.abc.GuildChannel | discord.Thread = await finder.find_channel(ctx.guild, self.database, self.database.starboard_channel)
+        starboard_blacklist: str = await finder.view_ids(ctx.guild, self.database, self.database.starboard_blacklist)
+        star_threshold: int = await finder.find_int(ctx.guild, self.database, self.database.star_threshold)
+        default_emote: int | str = await self.database.get_config(ctx.guild.id, self.database.default_emote)
+        if isinstance(default_emote, int):
+            emote: discord.Emoji = discord.utils.get(ctx.guild.emojis, id=default_emote)
+            emote_s: str = str(emote) if emote else "Unknown emote"
+        else:
+            emote_s = default_emote
+        embed = discord.Embed(color=discord.Color.dark_gray(),title="Starboard Configuration")
+        embed.add_field(name="Starboard channel:",value=starboard_channel.mention if starboard_channel else "None",inline=True)
+        embed.add_field(name="Starboard blacklist:",value=starboard_blacklist,inline=False)
+        embed.add_field(name="Star threshold:",value=star_threshold,inline=False)
+        embed.add_field(name="Default Emote:",value=emote_s,inline=False)
+        await ctx.send(embed=embed)
+    @starboard.error
+    async def on_starboard_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.TooManyArguments):
+            await ctx.send("Command requires no extra arguments. Please only do m?starboard")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("You do not have permission to view the starboard configuration.")
+        else:
+            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+
+    @starboard.command(name="emote")
     async def defaultemote(self, ctx: commands.Context, emoji: Union[discord.Emoji, str] = "⭐") -> discord.Message | None:
         """Sets the emote for use in the starboard (Uses the default star reaction if no emote is provided)"""
         if emoji and isinstance(emoji, discord.Emoji):
@@ -804,36 +831,7 @@ class Config(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def starboard(self, ctx: commands.Context) -> None:
-        """Displays the settings for the Starboard module (Starboard channel, blacklist, threshold, default emote)."""
-        starboard_channel: discord.abc.GuildChannel | discord.Thread = await finder.find_channel(ctx.guild, self.database, self.database.starboard_channel)
-        starboard_blacklist: str = await finder.view_ids(ctx.guild, self.database, self.database.starboard_blacklist)
-        star_threshold: int = await finder.find_int(ctx.guild, self.database, self.database.star_threshold)
-        default_emote: int | str = await self.database.get_config(ctx.guild.id, self.database.default_emote)
-        if isinstance(default_emote, int):
-            emote: discord.Emoji = discord.utils.get(ctx.guild.emojis, id=default_emote)
-            emote_s: str = str(emote) if emote else "Unknown emote"
-        else:
-            emote_s = default_emote
-        embed = discord.Embed(color=discord.Color.dark_gray(),title="Starboard Configuration")
-        embed.add_field(name="Starboard channel:",value=starboard_channel.mention if starboard_channel else "None",inline=True)
-        embed.add_field(name="Starboard blacklist:",value=starboard_blacklist,inline=False)
-        embed.add_field(name="Star threshold:",value=star_threshold,inline=False)
-        embed.add_field(name="Default Emote:",value=emote_s,inline=False)
-        await ctx.send(embed=embed)
-    @starboard.error
-    async def on_starboard_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.TooManyArguments):
-            await ctx.send("Command requires no extra arguments. Please only do m?starboard")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to view the starboard configuration.")
-        else:
-            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @starboard.command(name="blacklist", aliases=['blist', 'bl'])
     async def starboardblacklist(self, ctx: commands.Context, item: Optional[Union[discord.abc.GuildChannel, discord.User, discord.Role]]) -> None:
         """Updates the list of banned users, roles, and channels from starboarding posts and from getting posts on starboard (Providing no input resets the list)"""
         await config.update_id_list(ctx, self.database, self.database.starboard_blacklist, item, "starboard blacklist")
@@ -848,8 +846,7 @@ class Config(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @starboard.command(name="channel")
     async def starboardchannel(self, ctx: commands.Context, channel: Optional[discord.TextChannel]) -> None:
         """Sets or disables the channel where starred posts are made to"""
         await config.update_id(ctx, self.database, self.database.starboard_channel, channel, "starboard channel")
@@ -864,8 +861,7 @@ class Config(commands.Cog):
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @starboard.command(name="threshold", aliases=['limit'])
     async def starthreshold(self, ctx: commands.Context, num: Optional[int]) -> None:
         """Sets or disables the amount of stars needed to get a post to starboard (0 means starboard is disabled)"""
         await config.update_int(ctx, self.database, self.database.star_threshold, num, "starboard star threshold")
@@ -882,49 +878,7 @@ class Config(commands.Cog):
             
 #---------------------------------------------------------------------------------------------------------------------------------------
 #Welcome configuration
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def banmessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
-        """Resets/disables the ban message in the server, if no message is provided. If message is provided, it will set the default ban message to the given message."""
-        await config.update_str(ctx, self.database, self.database.ban_message, message, "ban message")
-    @banmessage.error
-    async def on_banmessage_error(self, ctx: commands.Context, error) -> None:
-        if isinstance(error, commands.TooManyArguments):
-            await ctx.send("Too many arguments provided. please only provide a message.")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to edit the ban message configuration.")
-        else:
-            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def joinmessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
-        """Resets/disables the join message in the server, if no message is provided. If message is provided, it will set the default join message to the given message."""
-        await config.update_str(ctx, self.database, self.database.join_message, message, "join message")
-    @joinmessage.error
-    async def on_leavemessage_error(self, ctx: commands.Context, error) -> None:
-        if isinstance(error, commands.TooManyArguments):
-            await ctx.send("Too many arguments provided. please only provide a message.")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to edit the join message configuration.")
-        else:
-            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def leavemessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
-        """Resets/disables the leave message in the server, if no message is provided. If message is provided, it will set the default leave message to the given message."""
-        await config.update_str(ctx, self.database, self.database.leave_message, message, "leave message")
-    @leavemessage.error
-    async def on_leavemessage_error(self, ctx: commands.Context, error) -> None:
-        if isinstance(error, commands.TooManyArguments):
-            await ctx.send("Too many arguments provided. please only provide a message.")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to edit the leave message configuration.")
-        else:
-            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-            
-    @commands.command()
+    @commands.group(invoke_without_command=True)
     @commands.has_permissions(manage_guild=True)
     async def welcome(self, ctx: commands.Context) -> None:
         """Displays the settings for the Welcome module (Welcome channel, join/leave/ban messages)"""
@@ -939,16 +893,54 @@ class Config(commands.Cog):
         embed.add_field(name="Ban Message", value=ban_message or "Not set", inline=False)
         await ctx.send(embed=embed)
     @welcome.error
-    async def on_welcome_error(self, ctx: commands.Context, error):
+    async def on_welcome_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments. Please only do m?welcome")
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send("You do not have permission to view the welcome configuration.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+
+    @welcome.command(name="banmessage", aliases=['bmsg', 'banmsg'])
+    async def banmessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
+        """Resets/disables the ban message in the server, if no message is provided. If message is provided, it will set the default ban message to the given message."""
+        await config.update_str(ctx, self.database, self.database.ban_message, message, "ban message")
+    @banmessage.error
+    async def on_banmessage_error(self, ctx: commands.Context, error) -> None:
+        if isinstance(error, commands.TooManyArguments):
+            await ctx.send("Too many arguments provided. please only provide a message.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("You do not have permission to edit the ban message configuration.")
+        else:
+            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
-    @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @welcome.command(name="joinmessage", aliases=['jmsg', 'joinmsg'])
+    async def joinmessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
+        """Resets/disables the join message in the server, if no message is provided. If message is provided, it will set the default join message to the given message."""
+        await config.update_str(ctx, self.database, self.database.join_message, message, "join message")
+    @joinmessage.error
+    async def on_leavemessage_error(self, ctx: commands.Context, error) -> None:
+        if isinstance(error, commands.TooManyArguments):
+            await ctx.send("Too many arguments provided. please only provide a message.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("You do not have permission to edit the join message configuration.")
+        else:
+            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+            
+    @welcome.command(name="leavemessage", aliases=['leavemsg', 'lmsg'])
+    async def leavemessage(self, ctx: commands.Context, *, message: Optional[str]) -> None:
+        """Resets/disables the leave message in the server, if no message is provided. If message is provided, it will set the default leave message to the given message."""
+        await config.update_str(ctx, self.database, self.database.leave_message, message, "leave message")
+    @leavemessage.error
+    async def on_leavemessage_error(self, ctx: commands.Context, error) -> None:
+        if isinstance(error, commands.TooManyArguments):
+            await ctx.send("Too many arguments provided. please only provide a message.")
+        elif isinstance(error, commands.MissingPermissions):
+            await ctx.send("You do not have permission to edit the leave message configuration.")
+        else:
+            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
+            
+    @welcome.command(name="channel")
     async def welcomechannel(self, ctx: commands.Context, channel: Optional[discord.TextChannel]) -> None:
         """Resets/disables the welcome channel in the server, if no channel is provided. If channel is provided, it will set the welcome channel to the given channel."""
         await config.update_id(ctx, self.database, self.database.welcome_channel, channel, "welcome channel")

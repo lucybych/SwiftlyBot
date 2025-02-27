@@ -3,7 +3,7 @@ from utility.finder import has_roles
 import discord
 
 tnb_server_id = 932843700751597608
-staff_roles = [933217733603123240,933217763957284956]
+staff_roles: list[int] = [933217733603123240,933217763957284956]
 
 class TNB(commands.Cog):
     def __init__(self, bot):
@@ -78,14 +78,14 @@ class TNB(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def nsfw(self, ctx: commands.Context):
+    async def nsfw(self, ctx: commands.Context) -> None:
         """NSFW copypasta, for staff use in TNB when users ask about NSFW or NSFW channels."""
         if await self.staff_check(ctx):
             embed = discord.Embed(color=discord.Color.dark_blue(),title="\"Do you have NSFW channels?\" / \"Where are the NSFW channels?\"")
             embed.add_field(name="",value="This server does *not* have any NSFW channels. We are not an NSFW server, nor will we be adding any NSFW channels in the future. This is meant to be a more mature environment, but NSFW things do not fall in line with the culture we wish to have in the server. If you're here just for NSFW, please find another server for that kind of stuff.")
             await ctx.send(embed=embed)
     @nsfw.error
-    async def on_nsfw_error(self, ctx: commands.Context, error):
+    async def on_nsfw_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Command requires no extra arguments. Please only do m?nsfw")
         else:

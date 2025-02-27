@@ -1,5 +1,4 @@
 from datetime import timedelta
-from discord import File
 from discord.ext import commands
 from io import BytesIO
 from PIL import Image
@@ -61,9 +60,9 @@ class Utility(commands.Cog):
                         with BytesIO() as png_image:
                             image.save(png_image, format=FORMAT)
                             png_image.seek(0)
-                            file = File(png_image, filename="sticker.png")
+                            file = discord.File(png_image, filename="sticker.png")
                     else:
-                        file = File(BytesIO(image_data), filename="sticker.png")
+                        file = discord.File(BytesIO(image_data), filename="sticker.png")
                     try:
                         await ctx.guild.create_sticker(name=sticker_name, description=description, emoji=emoji, file=file)
                         await ctx.send(f"Sticker '{sticker_name}' added successfully!")

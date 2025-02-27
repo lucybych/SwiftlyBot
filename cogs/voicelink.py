@@ -1,9 +1,9 @@
+from discord import Member, Role, VoiceChannel, VoiceState
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorCollection
 from pymongo.results import DeleteResult, UpdateResult
-from typing import Any, List
+from typing import Any
 from utility.guild import Database
-import discord
 
 ADD = "add"
 CHANNEL_ID = "channel_id"
@@ -16,12 +16,12 @@ class VoiceLink(commands.Cog):
         self.bot: commands.Bot = bot
         self.database = Database(self.bot)
     
-    async def update_vl(self, ctx: commands.Context, guild_id: int, channel: discord.VoiceChannel, role: discord.Role, action: str) -> None:
+    async def update_vl(self, ctx: commands.Context, guild_id: int, channel: VoiceChannel, role: Role, action: str) -> None:
         """Updates the database with roles linked to a voice channel."""
         voicelink_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(guild_id, self.database.voicelink)
         voice_link: Any = await voicelink_collection.find_one({CHANNEL_ID: channel.id})
         if voice_link:
-            role_ids: List[int] = voice_link.get(ROLE_IDS, [])
+            role_ids: list[int] = voice_link.get(ROLE_IDS, [])
             if action == ADD and role.id not in role_ids:
                 role_ids.append(role.id)
             elif action == REMOVE and role.id in role_ids:
@@ -37,7 +37,7 @@ class VoiceLink(commands.Cog):
     
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def addvoicelink(self, ctx: commands.Context, channel: discord.VoiceChannel, role: discord.Role) -> None:
+    async def addvoicelink(self, ctx: commands.Context, channel: VoiceChannel, role: Role) -> None:
         """Connects a role to a voice channel, that will be controlled based on when the user joins/leaves/moves from a voice channel."""
         await self.update_vl(ctx, ctx.guild.id, channel, role, ADD)
     @addvoicelink.error
@@ -53,7 +53,7 @@ class VoiceLink(commands.Cog):
             
     @commands.command()
     @commands.has_permissions(manage_guild=True)
-    async def removevoicelink(self, ctx: commands.Context, channel: discord.VoiceChannel, role: discord.Role) -> None:
+    async def removevoicelink(self, ctx: commands.Context, channel: VoiceChannel, role: Role) -> None:
         """Disconnects a role from a voice channel, meaning it will no longer be used when a user interacts with a voice channel."""
         await self.update_vl(ctx, ctx.guild.id, channel, role, REMOVE)
     @removevoicelink.error
@@ -68,7 +68,7 @@ class VoiceLink(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+    async def on_voice_state_update(self, member: Member, before: VoiceState, after: VoiceState) -> None:
         """Determines if a user has joined, left, or moved from a voice channel, and does the following:
         Joining a voice channel - Grabbing the list of roles linked to that channel and adds them to the user if possible
         Leaving a voice channel - Grabbing the list of roles linked to that channel and removing them from the user if possible
@@ -78,7 +78,7 @@ class VoiceLink(commands.Cog):
             entry: Any = await voicelink_collection.find_one({CHANNEL_ID: channel_id})
             if entry:
                 for role_id in entry[ROLE_IDS]:
-                    role: discord.Role = member.guild.get_role(role_id)
+                    role: Role = member.guild.get_role(role_id)
                     if role:
                         await member.add_roles(role) if add_roles else await member.remove_roles
         if not before.channel and after.channel:
@@ -91,7 +91,7 @@ class VoiceLink(commands.Cog):
             if before_entry:
                 for role_id in before_entry[ROLE_IDS]:
                     if not after_entry or (after_entry and role_id not in after_entry[ROLE_IDS]):
-                        role: discord.Role = member.guild.get_role(role_id)
+                        role: Role = member.guild.get_role(role_id)
                         if role:
                             await member.remove_roles(role)
             if after_entry:

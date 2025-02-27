@@ -11,9 +11,9 @@ class Logs(commands.Cog):
         """Initializes the Logs module"""
         self.bot: commands.Bot = bot
         self.database = Database(self.bot)
-            
+             
     @commands.Cog.listener()
-    async def on_bulk_message_delete(self, messages: List[discord.Message]):
+    async def on_bulk_message_delete(self, messages: List[discord.Message]) -> None:
         """When messages get purged from a server, the message log will log all the messages and who sent them"""
         message_log: discord.abc.GuildChannel | discord.Thread = await find_channel(messages[0].guild, self.database, self.database.message_log)
         if not message_log:
@@ -21,9 +21,8 @@ class Logs(commands.Cog):
         embed = discord.Embed(color=discord.Color.brand_red(),title=f"{len(messages)} purged in {messages[0].channel.name}", timestamp = discord.utils.utcnow())
         embed.set_footer(text=f"{len(messages)} latest shown")
         for message in messages:
-            if await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.log_ignores):
-                continue
-            embed.add_field(name="",value=f"{message.author.name}: {message.content}",inline=False)
+            if not await has_valid_id(message.author, message.channel, message.guild, self.database, self.database.log_ignores):
+                embed.add_field(name="",value=f"{message.author.name}: {message.content}",inline=False)
         await message_log.send(embed=embed)
 
     @commands.Cog.listener()
@@ -32,12 +31,11 @@ class Logs(commands.Cog):
         server_log: discord.abc.GuildChannel | discord.Thread = await find_channel(channel.guild, self.database, self.database.server_log)
         if not server_log:
             return
-        channel_type: str = channel.type.name[0].upper() + channel.type.name[1:]
-        embed = discord.Embed(color=discord.Color.green(), title=f"{channel_type} channel created", timestamp=discord.utils.utcnow())
+        embed = discord.Embed(color=discord.Color.green(), title=f"{channel.type.name[0].upper() + channel.type.name[1:]} channel created", timestamp=discord.utils.utcnow())
         embed.add_field(name="**Name:**", value=channel.name, inline=False)
         if not isinstance(channel, discord.CategoryChannel):
             embed.add_field(name="**Category:**", value=channel.category, inline=False)
-        for role, overwrite in channel.overwrites.items():
+        for item, overwrite in channel.overwrites.items():
             allowed_perms, denied_perms = await channel_role_overrides(overwrite)
             if len(allowed_perms) > 0 or len(denied_perms) > 0:
                 overwrite_s: str = ""
@@ -45,12 +43,12 @@ class Logs(commands.Cog):
                     overwrite_s += f"{perm}: ✅\n"
                 for perm in denied_perms:
                     overwrite_s += f"{perm}: ❌\n"
-            if isinstance(role, discord.Role):
-                embed.add_field(name="",value=f"**Role override for {role.mention}**\n{overwrite_s}",inline=False)
-            elif isinstance(role, discord.Member):
-                embed.add_field(name="",value=f"**Member override for {role.mention}**\n{overwrite_s}",inline=False)
+            if isinstance(item, discord.Role):
+                embed.add_field(name="",value=f"**Role override for {item.mention}**\n{overwrite_s}",inline=False)
+            elif isinstance(item, discord.Member):
+                embed.add_field(name="",value=f"**Member override for {item.mention}**\n{overwrite_s}",inline=False)
             else:
-                embed.add_field(name="",value=f"**Override for {role.id}**\n{overwrite_s}",inline=False)
+                embed.add_field(name="",value=f"**Override for {item.id}**\n{overwrite_s}",inline=False)
         embed.set_footer(text=f"Channel ID: {channel.id}")
         await server_log.send(embed=embed)
     
@@ -60,8 +58,7 @@ class Logs(commands.Cog):
         server_log: discord.abc.GuildChannel | discord.Thread = await find_channel(channel.guild, self.database, self.database.server_log)
         if not server_log:
             return
-        channel_type: str = channel.type.name[0].upper() + channel.type.name[1:]
-        embed = discord.Embed(color=discord.Color.red(), title=f"{channel_type} channel deleted", timestamp=discord.utils.utcnow())
+        embed = discord.Embed(color=discord.Color.red(), title=f"{channel.type.name[0].upper() + channel.type.name[1:]} channel deleted", timestamp=discord.utils.utcnow())
         embed.add_field(name="", value=f"**Name:** {channel.name}",inline=False)
         if not isinstance(channel, discord.CategoryChannel):
             embed.add_field(name="", value=f"**Category:** {channel.category}",inline=False)
@@ -126,10 +123,7 @@ class Logs(commands.Cog):
                         sentence += f"{perm}: ⬜ ➜ ❌\n"
                         covered_perms.add(perm)
                 if sentence:
-                    if isinstance(item, discord.Role) or isinstance(item, discord.Member):
-                        item_mention = str(item.mention)
-                    else:
-                        item_mention = item.id
+                    item_mention = item.mention if isinstance(item, discord.Role) or isinstance(item, discord.Member) else str(item.id)
                     embed.add_field(name="", value=f"**Overwrites for {item_mention} in {after.mention} updated**\n{sentence}", inline=False)
         if before_changes or after_changes or sentence != "":
             await server_log.send(embed=embed)
@@ -174,7 +168,7 @@ class Logs(commands.Cog):
         await self.database.setup_default_config(guild.id)
     
     @commands.Cog.listener()
-    async def on_guild_role_create(self, role: discord.Role):
+    async def on_guild_role_create(self, role: discord.Role) -> None:
         """When a role is created in the server, the server log will log the role's name, color, permissions, and whether it is mentionable and/or displayed seperately"""
         server_log: discord.abc.GuildChannel | discord.Thread = await find_channel(role.guild, self.database, self.database.server_log)
         if not server_log:
@@ -494,8 +488,7 @@ class Logs(commands.Cog):
         embed.add_field(name="",value=message.content + f"\n\nMessage ID: {message.id}")
         embed.set_footer(text=f"ID: {message.author.id}")
         if message.attachments:
-            filenames: str = ", ".join(attachment.filename for attachment in message.attachments)
-            embed.add_field(name="Attachments",value=f"{filenames}")
+            embed.add_field(name="Attachments",value=f"{', '.join(attachment.filename for attachment in message.attachments)}")
         await message_log.send(embed=embed)
 
     @commands.Cog.listener()

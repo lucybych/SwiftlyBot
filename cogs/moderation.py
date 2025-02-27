@@ -450,7 +450,7 @@ class Moderation(commands.Cog):
             num_deleted: int = results.deleted_count
             await ctx.send(f"Removed {num_deleted} {'warning' if num_deleted == 1 else 'warnings'} from **{user.name}**")
     @clearwarn.error
-    async def on_clearwarn_error(self, ctx: commands.Context, error):
+    async def on_clearwarn_error(self, ctx: commands.Context, error) -> None:
         if isinstance(error, commands.TooManyArguments):
             await ctx.send("Too many arguments provided. Please only include valid user(s).")
         elif isinstance(error, commands.MissingPermissions):
@@ -870,35 +870,6 @@ class Moderation(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
     
     #Done
-    @commands.command(aliases=['rn'])
-    @commands.has_permissions(manage_nicknames=True)
-    async def resetnick(self, ctx: commands.Context, members: commands.Greedy[discord.Member]) -> None:
-        """Resets the nickname of user(s)"""
-        successful_nick: List[discord.Member] = []
-        failed_nick: List[discord.Member] = []
-        for member in members:
-            try:
-                await member.edit(nick=None)
-                successful_nick.append(member)
-            except Exception:
-                failed_nick.append(member)
-                pass
-        if len(successful_nick) > 0:
-            await ctx.send(f"Reset nickname for {', '.join(x.name for x in successful_nick)}") 
-        if len(failed_nick) > 0:
-            await ctx.send(f"Failed to reset nickname for {', '.join(x.name for x in failed_nick)}")
-    @resetnick.error
-    async def on_resetnick_error(self, ctx: commands.Context, error) -> None:
-        if isinstance(error, commands.TooManyArguments):
-            await ctx.send("Too many arguments provided. Please only include valid user(s).")
-        elif isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission to reset user nicknames.")
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send("Invalid input. Ensure all users are valid and in the server.")
-        else:
-            await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-
-    #Done
     @commands.command()
     @commands.has_permissions(kick_members=True)
     async def rkick(self, ctx: commands.Context, members: commands.Greedy[discord.Member]) -> None:
@@ -1134,8 +1105,8 @@ class Moderation(commands.Cog):
     #Done
     @commands.command(aliases=['sn'])
     @commands.has_permissions(manage_nicknames=True)
-    async def setnick(self, ctx: commands.Context, members: commands.Greedy[discord.Member], name="Request New Nickname") -> None:
-        """Changes the nickname of user(s), setting it to \"Request New Nickname\" if the default is used"""
+    async def setnick(self, ctx: commands.Context, members: commands.Greedy[discord.Member], name=None) -> None:
+        """Changes the nickname of user(s), resetting the nickname if no name is provided."""
         s_nick: List[discord.Member] = []
         f_nick: List[discord.Member] = []
         for member in members:
@@ -1357,7 +1328,42 @@ class Moderation(commands.Cog):
             await ctx.send("Invalid input. Ensure all users are valid and in the server.")
         else:
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
-              
+    
+    @commands.command()
+    @commands.has_permissions(manage_roles=True)
+    async def warns(self, ctx: commands.Context, users: Optional[commands.Greedy[Union[discord.Member, discord.User]]]) -> None:
+        moderation_collection: AsyncIOMotorCollection = await self.database.get_guild_collection(ctx.guild.id, self.database.moderation)
+        if users:
+            for user in users:
+                entries: AsyncIOMotorCursor = await moderation_collection.find({OFFENDER: user.id, TYPE: "warn"})
+                embed = discord.Embed(title=f"Mod logs", color=discord.Color.blurple())
+                embed.set_author(name=user.name, url=user.avatar.url)
+                async for entry in entries:
+                    modlog_id: int = entry.get(ID)
+                    action: str = entry.get(TYPE)
+                    reason: str = entry.get(REASON, "No reason provided.")
+                    timestamp: datetime = entry.get(TIMESTAMP)
+                    mod_timestamp: date = timestamp.date()
+                    responsible_id: int = entry.get(RESPONSIBLE_MODERATOR)
+                    responsible: discord.User = self.bot.get_user(responsible_id)
+                    responsible_name: str = responsible.name if responsible else "Unknown Moderator"
+                    embed.add_field(name=f"#{modlog_id} | {action} | {mod_timestamp}",value=(f"**Responsible Moderator**: {responsible_name}\n"f"**Reason**: {reason}"),inline=True)
+                await ctx.send(embed=embed) if len(embed.fields) > 0 else await ctx.send(f"No warnings found for **{user.name}**.")
+        else:
+            entries: AsyncIOMotorCursor = await moderation_collection.find({TYPE: "warn"})
+            embed = discord.Embed(title=f"Mod logs", color=discord.Color.blurple())
+            async for entry in entries:
+                modlog_id: int = entry.get(ID)
+                action: str = entry.get(TYPE)
+                reason: str = entry.get(REASON, "No reason provided.")
+                timestamp: datetime = entry.get(TIMESTAMP)
+                mod_timestamp: date = timestamp.date()
+                responsible_id: int = entry.get(RESPONSIBLE_MODERATOR)
+                responsible: discord.User = self.bot.get_user(responsible_id)
+                responsible_name: str = responsible.name if responsible else "Unknown Moderator"
+                embed.add_field(name=f"#{modlog_id} | {action} | {mod_timestamp}",value=(f"**Responsible Moderator**: {responsible_name}\n"f"**Reason**: {reason}"),inline=True)
+                await ctx.send(embed=embed) if len(embed.fields) > 0 else await ctx.send(f"No warnings found within the server.")
+
     @commands.Cog.listener()
     async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:
         """When a user gets kicked, timed out, or removed from timeout, the moderation log will log the following:

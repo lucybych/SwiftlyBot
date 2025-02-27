@@ -9,12 +9,31 @@ import asyncio
 import discord
 import re
 
-AUTOMOD_EMOTES: list[str] = ["⏲️", "🔨", "🔇", "🔊", "👢", "🗑️", "1️⃣", "2️⃣", "3️⃣", "❌"]
+TIMEOUT_EMOTE = "⏲️"
+BAN_EMOTE = "🔨"
+UNMUTE_EMOTE = "🔇"
+PERMAMUTE_EMOTE = "🔊"
+KICK_EMOTE = "👢"
+DELETE_EMOTE = "🗑️"
+MUTE1_EMOTE = "1️⃣"
+MUTE2_EMOTE = "2️⃣"
+MUTE3_EMOTE = "3️⃣"
+REMOVE_EMOTE = "❌"
+AUTOMOD_EMOTES: list[str] = [TIMEOUT_EMOTE, BAN_EMOTE, UNMUTE_EMOTE, PERMAMUTE_EMOTE, KICK_EMOTE, DELETE_EMOTE, MUTE1_EMOTE, MUTE2_EMOTE, MUTE3_EMOTE, REMOVE_EMOTE]
 DRAMA_CHANNEL = "drama_channel"
 DRAMA_MESSAGE = "drama_message"
 MESSAGE_ID = "message_id"
 CHANNEL_ID = "channel_id"
 USER = "user"
+BAN = "ban"
+DELETE = "delete"
+KICK = "kick"
+MUTE = "mute"
+TIMEOUT = "timeout"
+UNMUTE = "unmute"
+UNTIMEOUT = "untimeout"
+WARN = "warn"
+MODERATION = "moderation"
 
 class Automod(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -29,10 +48,10 @@ class Automod(commands.Cog):
     
     async def automod_mute(self, moderation: Moderation, guild: discord.Guild, members: List[discord.Member], mute_role: discord.Role, responsible: Union[discord.User,discord.Member], reason: str, time: timedelta = None, text: str = None):
         """Performs the mute based on the reaction given in the automod"""
-        await moderation.punishment_steps(guild, "mute", members, reason, responsible, text, mute_role, None)
+        await moderation.punishment_steps(guild, MUTE, members, reason, responsible, text, mute_role, None)
         if time:
             await asyncio.sleep(time.total_seconds())
-            await moderation.punishment_steps(guild, "unmute", members, f"Automatic unmute from mute made {text} ago by {responsible.name} (ID: {responsible.id})", responsible, mute_role, None, None)
+            await moderation.punishment_steps(guild, UNMUTE, members, f"Automatic unmute from mute made {text} ago by {responsible.name} (ID: {responsible.id})", responsible, mute_role, None, None)
     
     async def check_link(self, content: str, guild: discord.Guild) -> bool:
         """Checks if a message contains a banned link"""
@@ -142,31 +161,31 @@ class Automod(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         """Checks if a message contains a banned link/word, has too many mentions, or has a non-whitelisted invite. If any of these are infracted before the time limit is up, they will be autobanned."""
-        moderation: Moderation = self.bot.get_cog("Moderation")
+        moderation: Moderation = self.bot.get_cog(MODERATION)
         if message.author.bot or message.author.guild_permissions.administrator or message.author.guild_permissions.manage_guild:
             return
         if await self.check_link(message.content, message.guild):
             await message.delete()
-            await moderation.punishment_steps(message.guild, "ban", [message.author], "Automatic action carried out for posting links.", self.bot.user, None, None, None)
+            await moderation.punishment_steps(message.guild, BAN, [message.author], "Automatic action carried out for posting links.", self.bot.user, None, None, None)
             return
         bad_words: bool = await self.check_word(message.content, message.guild)
         if bad_words:
             await message.delete()
             await message.channel.send("Please refrain from using innapropriate language.")
-            await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for using a blacklisted word", self.bot.user, None, None, None)
+            await moderation.punishment_steps(message.guild, WARN, [message.author], "Automatic action carried out for using a blacklisted word", self.bot.user, None, None, None)
             await self.send_drama_alert(message.guild, "blacklistedwords", message)
         bad_invite: bool = await self.check_invite(message.content, message.guild)
         if bad_invite:
             await message.delete()
             await message.channel.send("Please refrain from posting other Discord invites.")
-            await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for posting invites", self.bot.user, None, None, None)
+            await moderation.punishment_steps(message.guild, WARN, [message.author], "Automatic action carried out for posting invites", self.bot.user, None, None, None)
             await self.send_drama_alert(message.guild, "discordinvites", message)
         mentions: List = await self.has_mention(message)
         if mentions:
             mentionspam: bool = await self.check_mentions(message.guild, message.author)
             if mentionspam:
                 await message.channel.send("Please refrain from using so many mentions!")
-                await moderation.punishment_steps(message.guild, "warn", [message.author], "Automatic action carried out for spamming mentions", self.bot.user, None, None, None)
+                await moderation.punishment_steps(message.guild, WARN, [message.author], "Automatic action carried out for spamming mentions", self.bot.user, None, None, None)
                 await self.send_drama_alert(message.guild, "mentionspam", message)
         else:
             mentionspam = False
@@ -196,28 +215,28 @@ class Automod(commands.Cog):
             return
         mute_role: discord.Role = await find_role(guild, self.database, self.database.mute_role)
         user: discord.Member = guild.get_member(entry[USER])
-        moderation: Moderation = self.bot.get_cog("Moderation")
-        if payload.emoji.name == "⏲️" and perms.moderate_members:
-            await moderation.punishment_steps(guild, "timeout", [user], "Drama watcher timeout.", payload_user, "27d", None, timedelta(days=27))
+        moderation: Moderation = self.bot.get_cog(MODERATION)
+        if payload.emoji.name == TIMEOUT_EMOTE and perms.moderate_members:
+            await moderation.punishment_steps(guild, TIMEOUT, [user], "Drama watcher timeout.", payload_user, "27d", None, timedelta(days=27))
             await asyncio.sleep(2419200)
-            await moderation.punishment_steps(guild, "untimeout", [user], f"Automatic untimeout from timeout made 27d ago by {payload_user.name} (ID: {payload_user.id})", payload_user, None, None, None)
-        elif payload.emoji.name == "🔨" and perms.ban_members:
-            await moderation.punishment_steps(guild, "ban", [user], "Drama watcher ban.", payload_user, None, None, None)
-        elif payload.emoji.name == "🔇" and mute_role and perms.manage_roles:
+            await moderation.punishment_steps(guild, UNTIMEOUT, [user], f"Automatic untimeout from timeout made 27d ago by {payload_user.name} (ID: {payload_user.id})", payload_user, None, None, None)
+        elif payload.emoji.name == BAN_EMOTE and perms.ban_members:
+            await moderation.punishment_steps(guild, BAN, [user], "Drama watcher ban.", payload_user, None, None, None)
+        elif payload.emoji.name == PERMAMUTE_EMOTE and mute_role and perms.manage_roles:
             await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher permanent mute", None, None)
-        elif payload.emoji.name == "🔊" and mute_role and perms.manage_roles:
-            await moderation.punishment_steps(guild, "unmute", [user], "Drama watcher unmute.", payload_user, None, mute_role, None)
-        elif payload.emoji.name == "👢" and perms.kick_members:
-            await moderation.punishment_steps(guild, "kick", [user], "Drama watcher kick.", payload_user, None, None, None)
-        elif payload.emoji.name == "🗑️" and perms.manage_messages:
-            await moderation.punishment_steps(guild, "delete", [user], "Drama watcher delete", payload_user, None, None, None, None)
-        elif payload.emoji.name == "1️⃣" and mute_role and perms.manage_roles:
+        elif payload.emoji.name == UNMUTE_EMOTE and mute_role and perms.manage_roles:
+            await moderation.punishment_steps(guild, UNMUTE, [user], "Drama watcher unmute.", payload_user, None, mute_role, None)
+        elif payload.emoji.name == KICK_EMOTE and perms.kick_members:
+            await moderation.punishment_steps(guild, KICK, [user], "Drama watcher kick.", payload_user, None, None, None)
+        elif payload.emoji.name == DELETE_EMOTE and perms.manage_messages:
+            await moderation.punishment_steps(guild, DELETE, [user], "Drama watcher delete", payload_user, None, None, None, None)
+        elif payload.emoji.name == MUTE1_EMOTE and mute_role and perms.manage_roles:
             await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama-watcher 12-hour mute", timedelta(hours=12), "12h")
-        elif payload.emoji.name == "2️⃣" and mute_role and perms.manage_roles:
+        elif payload.emoji.name == MUTE2_EMOTE and mute_role and perms.manage_roles:
             await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher 24-hour mute", timedelta(hours=24), "24h")
-        elif payload.emoji.name == "3️⃣" and mute_role and perms.manage_roles:
+        elif payload.emoji.name == MUTE3_EMOTE and mute_role and perms.manage_roles:
             await self.automod_mute(moderation, guild, [user], mute_role, payload_user, "Drama watcher 48-hour mute", timedelta(hours=48), "48h")
-        elif payload.emoji.name == "❌" and perms.manage_messages:
+        elif payload.emoji.name == REMOVE_EMOTE and perms.manage_messages:
             payload_message: discord.Message = await channel.fetch_message(payload.message_id)
             await payload_message.delete()
             await automod.delete_one({MESSAGE_ID: payload.message_id})

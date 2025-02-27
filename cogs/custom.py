@@ -186,7 +186,7 @@ class Custom(commands.Cog):
             await ctx.send(f"An unexpected error occurred with the command. Input message: {ctx.message.content}. Error: {error}. Please contact swiftlynerd for potential fixes/explanations.")
             
     @commands.command()
-    async def ccolor(self, ctx: commands.Context, name: str, color: discord.Color):
+    async def ccolor(self, ctx: commands.Context, name: str, color: discord.Color) -> discord.Message | None:
         if ctx.guild.id == tmc_server_id:
             valid_roles: List[int] = [role.id for role in ctx.author.roles if role.id in tmc_allowed_custom_colors]
             if not valid_roles:
