@@ -1,11 +1,36 @@
-How to use the bot:
+# Discord Moderation & Automation Bot
 
-- Create a Discord bot to generate a token
-- Create a MongoDB account and cluster, making sure to grab the URI with the password
+A Python-based Discord moderation and server management bot with MongoDB-backed persistence.
 
-- Create a variables .env file, that has the following:
-  DISCORD_TOKEN="<Put your Discord token here without the brackets>"
-  MONDODB_URI="<Put your MongoDB database URI without the brackets>"
+## Features
 
--Modify information as necessary (Keep ban limit at 2k per day as that is a native Discord rate limit), such as silent punishment reasons, durations, server IDs, etc
+- Automated moderation actions
+- Configurable punishment system
+- Persistent server settings
+- Event-driven command handling
+- MongoDB integration
+- Administrative tooling
 
+## Technologies
+
+- Python
+- Discord.py
+- MongoDB
+- Discord APIs
+- Async Programming
+
+## Example Commands
+
+!warn
+!mute
+!ban
+Documentation will be posted upon completion
+
+## Installation
+
+1. Create a Discord Bot, by logging into the [Discord developer portal](https://discord.com/developers/home)
+2. Copy the Discord bot token and put into a .env file named "variables.env" with variable named DISCORD_TOKEN="<insert token here>"
+4. Create a MongoDB account and create a free database: https://www.mongodb.com/
+5. Create a password for the database, and then copy the URL and put into the .env file named MONGODB_URL="<insert MongoDB link here>" (MAKE SURE YOUR ENV FILE IS IN YOUR GIT IGNORE AND IS NOT PUBLIC!)
+6. Download all files.
+7. Run "start.py"
